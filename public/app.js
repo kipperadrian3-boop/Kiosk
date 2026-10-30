@@ -243,11 +243,20 @@ function setupCreateModal() {
     const name = productNameInput.value.trim();
     const quantity = parseInt(productQtyInput.value, 10);
 
-    if (name && quantity > 0) {
+    if (!name) {
+      // Leer: Fokus ins Feld setzen, um darauf hinzuweisen
+      productNameInput.focus();
+      return;
+    }
+
+    if (quantity > 0) {
       tempItems.push({ name, quantity });
       productNameInput.value = '';
       productQtyInput.value = '1';
-      productNameInput.focus();
+      // Tastatur/Eingabefeld schließen (blur), damit es auf Handys/Tablets nicht aufploppt
+      productNameInput.blur();
+      productQtyInput.blur();
+      if (document.activeElement) document.activeElement.blur();
       renderTempItems();
     }
   });
@@ -340,10 +349,17 @@ function setupDetailModal() {
   editAddItemBtn.addEventListener('click', () => {
     const name = editProductName.value.trim();
     const qty = parseInt(editProductQty.value, 10);
-    if (name && qty > 0) {
+    if (!name) {
+      editProductName.focus();
+      return;
+    }
+    if (qty > 0) {
       currentEditingItems.push({ name, quantity: qty });
       editProductName.value = '';
       editProductQty.value = '1';
+      editProductName.blur();
+      editProductQty.blur();
+      if (document.activeElement) document.activeElement.blur();
       renderDetailItems();
     }
   });
