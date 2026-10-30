@@ -46,6 +46,7 @@ const tempItemsTbody = document.getElementById('temp-items-tbody');
 const emptyTableMsg = document.getElementById('empty-table-msg');
 const finishInventoryBtn = document.getElementById('finish-inventory-btn');
 
+const inventoryFrame = document.getElementById('inventory-frame');
 const inventoryList = document.getElementById('inventory-list');
 const inventoryCount = document.getElementById('inventory-count');
 const scrollSentinel = document.getElementById('scroll-sentinel');
@@ -191,7 +192,10 @@ function setupInfiniteScroll() {
       displayedLimit += 10;
       renderInventoryList();
     }
-  }, { threshold: 0.1 });
+  }, {
+    root: inventoryFrame || null,
+    threshold: 0.1
+  });
 
   observer.observe(scrollSentinel);
 }
