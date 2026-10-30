@@ -437,6 +437,9 @@ body.modal-open {
 }
 
 .confirm-modal-content {
+  max-width: 420px;
+}
+
 /* Form inputs & table */
 .inventory-modal-content {
   max-width: 620px;
