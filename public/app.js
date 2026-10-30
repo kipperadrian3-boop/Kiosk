@@ -187,6 +187,7 @@ function renderInventoryList() {
           <button class="card-menu-btn" aria-label="Menü" title="Menü">&#8942;</button>
           <div class="card-dropdown-menu">
             <button class="card-dropdown-item" data-action="download-excel">Download Excel</button>
+            <button class="card-dropdown-item" data-action="download-pdf">Download PDF</button>
           </div>
         </div>
       </div>
@@ -216,6 +217,13 @@ function renderInventoryList() {
       e.stopPropagation();
       dropdown.classList.remove('open');
       downloadInventoryExcel(inv);
+    });
+
+    // Download PDF
+    card.querySelector('[data-action="download-pdf"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.remove('open');
+      downloadInventoryPDF(inv);
     });
 
     inventoryList.appendChild(card);
@@ -364,6 +372,118 @@ function downloadInventoryExcel(inventory) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inventur');
   XLSX.writeFile(wb, buildFileName(inventory, 'xlsx'));
+}
+
+// PDF-Download mit jsPDF + autotable (kompatibel mit iOS/iPadOS, Android & Desktop)
+function downloadInventoryPDF(inventory) {
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert('PDF-Bibliothek wird noch geladen. Bitte kurz warten...');
+    return;
+  }
+
+  const { rows, gesamtMenge, gesamtAusgaben, gesamtGewinn } = buildInventoryData(inventory);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Titel
+  const titleText = inventory.name || 'Inventur';
+  const d = new Date(inventory.createdAt);
+  const dateStr = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(titleText, 14, 20);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(120);
+  doc.text(`Erstellt am: ${dateStr}`, 14, 28);
+  doc.setTextColor(0);
+
+  // Hilfsfunktion: Preis-Text
+  function priceStr(val) {
+    if (val === null || val === undefined || val === '') return '';
+    return Number(val).toFixed(2) + ' €';
+  }
+
+  // Tabellen-Daten
+  const tableHead = [['Produkt', 'Menge', 'Einkaufspreis', 'Verkaufspreis', 'Ausgaben', 'Gewinn']];
+  const tableBody = rows.map(r => [
+    r.name,
+    String(r.menge),
+    priceStr(r.ek),
+    priceStr(r.vk),
+    priceStr(r.ausgaben),
+    priceStr(r.gewinn)
+  ]);
+
+  // GESAMT-Zeile
+  tableBody.push([
+    'GESAMT',
+    String(gesamtMenge),
+    '',
+    '',
+    priceStr(gesamtAusgaben),
+    priceStr(gesamtGewinn)
+  ]);
+
+  const lastRowIdx = tableBody.length - 1;
+
+  doc.autoTable({
+    head: tableHead,
+    body: tableBody,
+    startY: 34,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [255, 243, 205], // Textmarker Gelb wie Excel
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      fontSize: 10,
+      halign: 'center'
+    },
+    bodyStyles: {
+      fontSize: 9,
+      cellPadding: 4,
+      textColor: [30, 41, 59]
+    },
+    columnStyles: {
+      0: { halign: 'left' },
+      1: { halign: 'right' },
+      2: { halign: 'right' },
+      3: { halign: 'right' },
+      4: { halign: 'right' },
+      5: { halign: 'right' }
+    },
+    didParseCell: function(data) {
+      if (data.section === 'body' && data.row.index === lastRowIdx) {
+        // Textmarker Grün wie Excel
+        data.cell.styles.fillColor = [212, 237, 218];
+        data.cell.styles.textColor = [0, 0, 0];
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fontSize = 10;
+      }
+    }
+  });
+
+  const fileName = buildFileName(inventory, 'pdf');
+
+  // Universal Download Trigger für echte Datei-Downloads (auch auf iOS/iPadOS und Android)
+  try {
+    const blob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    }, 2000);
+  } catch (err) {
+    // Fallback auf doc.save
+    doc.save(fileName);
+  }
 }
 
 // Infinite Scroll Observer
