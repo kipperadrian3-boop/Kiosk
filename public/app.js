@@ -181,12 +181,118 @@ function renderInventoryList() {
           ${inv.updatedAt !== inv.createdAt ? `<span>Bearbeitet: ${formatDate(inv.updatedAt)}</span>` : ''}
         </div>
       </div>
-      <div class="card-badge">${totalCount} Stk.</div>
+      <div class="card-right-actions">
+        <div class="card-badge">${totalCount} Stk.</div>
+        <div class="card-menu-wrapper">
+          <button class="card-menu-btn" aria-label="Menü" title="Menü">&#8942;</button>
+          <div class="card-dropdown-menu">
+            <button class="card-dropdown-item" data-action="download">Download</button>
+          </div>
+        </div>
+      </div>
     `;
 
-    card.addEventListener('click', () => openDetail(inv.firebaseKey));
+    // Klick auf Karte öffnet Details (aber nicht wenn Menü-Button geklickt)
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.card-menu-wrapper')) return;
+      openDetail(inv.firebaseKey);
+    });
+
+    // 3-Punkte-Menü Toggle
+    const menuBtn = card.querySelector('.card-menu-btn');
+    const dropdown = card.querySelector('.card-dropdown-menu');
+
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      // Alle anderen Dropdowns schließen
+      document.querySelectorAll('.card-dropdown-menu.open').forEach(m => {
+        if (m !== dropdown) m.classList.remove('open');
+      });
+      dropdown.classList.toggle('open');
+    });
+
+    // Download-Button
+    const downloadBtn = card.querySelector('[data-action="download"]');
+    downloadBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.remove('open');
+      downloadInventoryExcel(inv);
+    });
+
     inventoryList.appendChild(card);
   });
+}
+
+// Globaler Klick schließt alle offenen Dropdown-Menüs
+document.addEventListener('click', () => {
+  document.querySelectorAll('.card-dropdown-menu.open').forEach(m => m.classList.remove('open'));
+});
+
+// Excel-Download mit SheetJS
+function downloadInventoryExcel(inventory) {
+  const items = inventory.items || [];
+
+  // Datenzeilen aufbauen
+  const rows = items.map(item => {
+    const menge = item.quantity || 0;
+    const ek = (item.ek !== null && item.ek !== undefined) ? Number(item.ek) : 0;
+    const vk = (item.vk !== null && item.vk !== undefined) ? Number(item.vk) : 0;
+    const ausgaben = menge * ek;
+    const gewinn = (vk - ek) * menge;
+    return {
+      'Produkt': item.name || '',
+      'Menge': menge,
+      'Einkaufspreis': ek,
+      'Verkaufspreis': vk,
+      'Ausgaben': ausgaben,
+      'Gewinn': gewinn
+    };
+  });
+
+  // GESAMT-Zeile
+  let gesamtMenge = 0, gesamtAusgaben = 0, gesamtGewinn = 0;
+  rows.forEach(r => {
+    gesamtMenge += r['Menge'];
+    gesamtAusgaben += r['Ausgaben'];
+    gesamtGewinn += r['Gewinn'];
+  });
+
+  rows.push({
+    'Produkt': 'GESAMT',
+    'Menge': gesamtMenge,
+    'Einkaufspreis': '',
+    'Verkaufspreis': '',
+    'Ausgaben': gesamtAusgaben,
+    'Gewinn': gesamtGewinn
+  });
+
+  // Worksheet erstellen
+  const ws = XLSX.utils.json_to_sheet(rows);
+
+  // Spaltenbreiten setzen
+  ws['!cols'] = [
+    { wch: 22 }, // Produkt
+    { wch: 10 }, // Menge
+    { wch: 16 }, // Einkaufspreis
+    { wch: 16 }, // Verkaufspreis
+    { wch: 14 }, // Ausgaben
+    { wch: 14 }  // Gewinn
+  ];
+
+  // Workbook erstellen und exportieren
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Inventur');
+
+  // Dateiname: [inventur-name]_[erstelldatum].xlsx
+  const invName = (inventory.name || 'Inventur').replace(/\s+/g, '-');
+  const d = new Date(inventory.createdAt);
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const datePart = `${day}.${month}.${year}`;
+  const fileName = `${invName}_${datePart}.xlsx`;
+
+  XLSX.writeFile(wb, fileName);
 }
 
 // Infinite Scroll Observer
