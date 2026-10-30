@@ -137,8 +137,9 @@ function renderInventoryList() {
           ${inv.updatedAt !== inv.createdAt ? `<span>Bearbeitet: ${formatDate(inv.updatedAt)}</span>` : ''}
         </div>
       </div>
-      <div class="card-badge">${(inv.items || []).length} Positionen (${totalCount} Stk.)</div>
+      <div class="card-badge">${totalCount} Stk.</div>
     `;
+
 
     card.addEventListener('click', () => openDetail(inv.id));
     inventoryList.appendChild(card);
