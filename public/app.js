@@ -466,23 +466,23 @@ function downloadInventoryPDF(inventory) {
 
   const fileName = buildFileName(inventory, 'pdf');
 
-  // Universal Download Trigger für echte Datei-Downloads (auch auf iOS/iPadOS und Android)
-  try {
-    const blob = doc.output('blob');
-    const blobUrl = URL.createObjectURL(blob);
+  // PDF als octet-stream Blob exportieren, damit Safari/iPadOS die Datei herunterlädt statt sie nur im Browser anzuzeigen
+  const pdfBlob = doc.output('blob');
+  const forcedBlob = new Blob([pdfBlob], { type: 'application/octet-stream' });
+
+  if (window.saveAs) {
+    window.saveAs(forcedBlob, fileName);
+  } else {
+    const blobUrl = URL.createObjectURL(forcedBlob);
     const link = document.createElement('a');
     link.href = blobUrl;
     link.download = fileName;
-    link.rel = 'noopener';
     document.body.appendChild(link);
     link.click();
     setTimeout(() => {
       document.body.removeChild(link);
       URL.revokeObjectURL(blobUrl);
     }, 2000);
-  } catch (err) {
-    // Fallback auf doc.save
-    doc.save(fileName);
   }
 }
 
