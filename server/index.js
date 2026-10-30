@@ -110,6 +110,22 @@ app.put('/api/inventories/:id', (req, res) => {
   res.json(data[index]);
 });
 
+// DELETE /api/inventories/:id - Inventur löschen
+app.delete('/api/inventories/:id', (req, res) => {
+  const { id } = req.params;
+  const data = readData();
+  const index = data.findIndex(inv => inv.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({ error: 'Inventur nicht gefunden' });
+  }
+
+  const deleted = data.splice(index, 1);
+  writeData(data);
+  res.json({ success: true, deleted: deleted[0] });
+});
+
+
 if (!IS_VERCEL) {
   app.listen(PORT, () => {
     console.log(`Kiosk-Server läuft auf Port ${PORT}`);

@@ -43,7 +43,16 @@ const editProductName = document.getElementById('edit-product-name');
 const editProductQty = document.getElementById('edit-product-qty');
 const editAddItemBtn = document.getElementById('edit-add-item-btn');
 
+// Delete elements
+const deleteInventoryBtn = document.getElementById('delete-inventory-btn');
+const confirmDeleteModal = document.getElementById('confirm-delete-modal');
+const closeConfirmDeleteModal = document.getElementById('close-confirm-delete-modal');
+const cancelConfirmDeleteBtn = document.getElementById('cancel-confirm-delete-btn');
+const confirmDeleteInput = document.getElementById('confirm-delete-input');
+const executeDeleteBtn = document.getElementById('execute-delete-btn');
+
 let currentEditingItems = [];
+
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
@@ -307,7 +316,59 @@ function setupDetailModal() {
     detailModal.classList.remove('open');
     renderInventoryList();
   });
+
+  // Löschen Flow mit Sicherheitsbestätigung
+  deleteInventoryBtn.addEventListener('click', () => {
+    confirmDeleteInput.value = '';
+    executeDeleteBtn.disabled = true;
+    confirmDeleteModal.classList.add('open');
+    confirmDeleteInput.focus();
+  });
+
+  function closeConfirmModal() {
+    confirmDeleteModal.classList.remove('open');
+    confirmDeleteInput.value = '';
+    executeDeleteBtn.disabled = true;
+  }
+
+  closeConfirmDeleteModal.addEventListener('click', closeConfirmModal);
+  cancelConfirmDeleteBtn.addEventListener('click', closeConfirmModal);
+
+  // Textfeld-Eingabe überwachen: Erst wenn "löschen" oder "Löschen" steht, leuchtet der Button auf
+  confirmDeleteInput.addEventListener('input', () => {
+    const val = confirmDeleteInput.value.trim().toLowerCase();
+    if (val === 'löschen') {
+      executeDeleteBtn.disabled = false;
+    } else {
+      executeDeleteBtn.disabled = true;
+    }
+  });
+
+  executeDeleteBtn.addEventListener('click', async () => {
+    if (executeDeleteBtn.disabled) return;
+    executeDeleteBtn.disabled = true;
+    executeDeleteBtn.textContent = 'Wird gelöscht...';
+
+    const idToDelete = currentViewingId;
+    inventories = inventories.filter(i => i.id !== idToDelete);
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventories));
+
+    try {
+      await fetch(`${API_URL}/${idToDelete}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.warn('DELETE Request offline ausgeführt / lokal synchronisiert');
+    }
+
+    executeDeleteBtn.textContent = 'Löschen';
+    executeDeleteBtn.disabled = true;
+    closeConfirmModal();
+    detailModal.classList.remove('open');
+    renderInventoryList();
+  });
 }
+
 
 function updateEditView() {
   if (isEditMode) {

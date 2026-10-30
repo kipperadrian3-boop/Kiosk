@@ -135,13 +135,35 @@
           </table>
         </div>
       </div>
+      <div class="modal-footer flex-row space-between">
+        <button id="delete-inventory-btn" class="btn danger-btn">Löschen</button>
+        <div class="right-actions">
+          <button id="toggle-edit-btn" class="btn secondary-btn">Bearbeiten</button>
+          <button id="save-edit-btn" class="btn primary-btn hidden">Änderungen speichern</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Löschen Bestätigung mit Sicherheitswort -->
+  <div id="confirm-delete-modal" class="modal">
+    <div class="modal-content confirm-modal-content">
+      <div class="modal-header">
+        <h3 class="danger-title">Wirklich Löschen ?</h3>
+        <button id="close-confirm-delete-modal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-text">Diese Aktion kann nicht rückgängig gemacht werden. Bitte gib <strong>Löschen</strong> ein, um das Löschen zu bestätigen:</p>
+        <input type="text" id="confirm-delete-input" placeholder="Löschen" autocomplete="off">
+      </div>
       <div class="modal-footer flex-row">
-        <button id="toggle-edit-btn" class="btn secondary-btn">Bearbeiten</button>
-        <button id="save-edit-btn" class="btn primary-btn hidden">Änderungen speichern</button>
+        <button id="cancel-confirm-delete-btn" class="btn secondary-btn">Abbrechen</button>
+        <button id="execute-delete-btn" class="btn danger-btn glow-btn" disabled>Löschen</button>
       </div>
     </div>
   </div>
 
   <script src="app.js"></script>
+
 </body>
 </html>
