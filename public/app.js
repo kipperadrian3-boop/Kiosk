@@ -241,7 +241,7 @@ function renderTempItems() {
       <td>${it.name}</td>
       <td class="text-right">${it.quantity}</td>
       <td class="text-center">
-        <button type="button" class="del-btn" data-index="${idx}">&times;</button>
+        <button type="button" class="del-btn" data-index="${idx}">Entfernen</button>
       </td>
     `;
     tr.querySelector('.del-btn').addEventListener('click', () => {
@@ -269,6 +269,7 @@ function openDetail(id) {
   renderDetailItems();
   detailModal.classList.add('open');
 }
+
 
 function setupDetailModal() {
   closeDetailModal.addEventListener('click', () => {
@@ -396,7 +397,7 @@ function renderDetailItems() {
     tr.innerHTML = `
       <td>${it.name}</td>
       <td class="text-right">${it.quantity}</td>
-      ${isEditMode ? `<td class="text-center"><button class="del-btn" data-idx="${idx}">&times;</button></td>` : ''}
+      ${isEditMode ? `<td class="text-center"><button class="del-btn" data-idx="${idx}">Entfernen</button></td>` : ''}
     `;
 
     if (isEditMode) {
@@ -408,4 +409,5 @@ function renderDetailItems() {
 
     detailItemsTbody.appendChild(tr);
   });
+
 }
