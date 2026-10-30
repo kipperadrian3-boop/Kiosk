@@ -671,14 +671,22 @@ input:focus {
   }
 
   .flex-row.space-between {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 0.75rem;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .flex-row.space-between #delete-inventory-btn {
+    width: auto;
   }
 
   .right-actions {
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     gap: 0.5rem;
   }
 }
