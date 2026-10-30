@@ -1,0 +1,12 @@
+[
+  {
+    "id": "1730293000000",
+    "createdAt": "2026-10-30T10:15:00.000Z",
+    "updatedAt": "2026-10-30T10:15:00.000Z",
+    "items": [
+      { "name": "Coca Cola 0.33l", "quantity": 24 },
+      { "name": "Snickers", "quantity": 15 },
+      { "name": "Kaugummi Minze", "quantity": 50 }
+    ]
+  }
+]
