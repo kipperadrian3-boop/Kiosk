@@ -5,40 +5,58 @@ const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const DATA_FILE = path.join(__dirname, 'data', 'inventory.json');
+
+// Für Vercel Serverless: Im /tmp Verzeichnis speichern, da das Root-Dateisystem read-only ist
+const IS_VERCEL = process.env.VERCEL === '1' || process.env.NOW_REGION !== undefined;
+const DATA_FILE = IS_VERCEL
+  ? path.join('/tmp', 'inventory.json')
+  : path.join(__dirname, 'data', 'inventory.json');
+
+const INITIAL_FILE = path.join(__dirname, 'data', 'inventory.json');
 
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
+// In-Memory Fallback für Serverless Instanzen
+let memoryStore = null;
+
 function readData() {
+  if (memoryStore !== null) {
+    return memoryStore;
+  }
   try {
-    if (!fs.existsSync(DATA_FILE)) {
-      return [];
+    if (fs.existsSync(DATA_FILE)) {
+      const content = fs.readFileSync(DATA_FILE, 'utf-8');
+      memoryStore = JSON.parse(content || '[]');
+      return memoryStore;
+    } else if (fs.existsSync(INITIAL_FILE)) {
+      const content = fs.readFileSync(INITIAL_FILE, 'utf-8');
+      memoryStore = JSON.parse(content || '[]');
+      return memoryStore;
     }
-    const content = fs.readFileSync(DATA_FILE, 'utf-8');
-    return JSON.parse(content || '[]');
   } catch (err) {
     console.error('Fehler beim Lesen:', err);
-    return [];
   }
+  memoryStore = [];
+  return memoryStore;
 }
 
 function writeData(data) {
+  memoryStore = data;
   try {
     fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
     fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8');
   } catch (err) {
-    console.error('Fehler beim Speichern:', err);
+    console.error('Fehler beim Speichern in Datei (Memory Fallback aktiv):', err);
   }
 }
 
 // GET /api/inventories - Alle Inventuren abrufen
 app.get('/api/inventories', (req, res) => {
   const data = readData();
-  // Neueste zuerst
-  data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  res.json(data);
+  const sorted = [...data].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  res.json(sorted);
 });
 
 // POST /api/inventories - Neue Inventur erstellen
@@ -92,6 +110,10 @@ app.put('/api/inventories/:id', (req, res) => {
   res.json(data[index]);
 });
 
-app.listen(PORT, () => {
-  console.log(`Kiosk-Server läuft auf Port ${PORT}`);
-});
+if (!IS_VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Kiosk-Server läuft auf Port ${PORT}`);
+  });
+}
+
+module.exports = app;

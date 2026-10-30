@@ -1,4 +1,5 @@
 const API_URL = '/api/inventories';
+const LOCAL_STORAGE_KEY = 'kiosk_inventories_cache';
 
 // State
 let inventories = [];
@@ -76,13 +77,19 @@ function setupDrawer() {
 async function fetchInventories() {
   try {
     const res = await fetch(API_URL);
-    if (!res.ok) throw new Error('Fehler beim Abrufen');
+    if (!res.ok) throw new Error('API nicht erreichbar');
     inventories = await res.json();
-    renderInventoryList();
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventories));
   } catch (err) {
-    console.error(err);
-    inventoryList.innerHTML = '<p class="empty-msg">Konnte Inventuren nicht laden (Server offline?).</p>';
+    console.warn('Fallback zu lokalem Speicher:', err);
+    const local = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (local) {
+      inventories = JSON.parse(local);
+    } else {
+      inventories = [];
+    }
   }
+  renderInventoryList();
 }
 
 function formatDate(isoString) {
@@ -111,7 +118,7 @@ function renderInventoryList() {
   slice.forEach((inv) => {
     const card = document.createElement('div');
     card.className = 'inventory-card';
-    const totalCount = inv.items.reduce((sum, it) => sum + it.quantity, 0);
+    const totalCount = (inv.items || []).reduce((sum, it) => sum + it.quantity, 0);
 
     card.innerHTML = `
       <div>
@@ -121,7 +128,7 @@ function renderInventoryList() {
           ${inv.updatedAt !== inv.createdAt ? `<span>Bearbeitet: ${formatDate(inv.updatedAt)}</span>` : ''}
         </div>
       </div>
-      <div class="card-badge">${inv.items.length} Positionen (${totalCount} Stk.)</div>
+      <div class="card-badge">${(inv.items || []).length} Positionen (${totalCount} Stk.)</div>
     `;
 
     card.addEventListener('click', () => openDetail(inv.id));
@@ -169,19 +176,42 @@ function setupCreateModal() {
 
   finishInventoryBtn.addEventListener('click', async () => {
     if (tempItems.length === 0) return;
+    
+    finishInventoryBtn.disabled = true;
+    finishInventoryBtn.textContent = 'Wird gespeichert...';
+
+    const newRecord = {
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      items: [...tempItems]
+    };
+
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: tempItems })
       });
+
       if (res.ok) {
-        createModal.classList.remove('open');
-        await fetchInventories();
+        const saved = await res.json();
+        inventories.unshift(saved);
+      } else {
+        // Fallback falls Serverless temporär blockiert
+        inventories.unshift(newRecord);
       }
     } catch (err) {
-      alert('Fehler beim Speichern der Inventur');
+      console.warn('Server offline / Request fehlgeschlagen. Lokale Speicherung aktiv:', err);
+      inventories.unshift(newRecord);
     }
+
+    // Sofort lokal persistieren und anzeigen
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventories));
+    createModal.classList.remove('open');
+    finishInventoryBtn.textContent = 'Fertigstellen';
+    finishInventoryBtn.disabled = false;
+    renderInventoryList();
   });
 }
 
@@ -218,7 +248,7 @@ function openDetail(id) {
   if (!inv) return;
 
   currentViewingId = id;
-  currentEditingItems = JSON.parse(JSON.stringify(inv.items));
+  currentEditingItems = JSON.parse(JSON.stringify(inv.items || []));
   isEditMode = false;
 
   detailTitle.textContent = `Inventur-Details`;
@@ -252,19 +282,30 @@ function setupDetailModal() {
   });
 
   saveEditBtn.addEventListener('click', async () => {
+    saveEditBtn.disabled = true;
+    saveEditBtn.textContent = 'Speichern...';
+
+    const index = inventories.findIndex(i => i.id === currentViewingId);
+    if (index !== -1) {
+      inventories[index].items = [...currentEditingItems];
+      inventories[index].updatedAt = new Date().toISOString();
+    }
+
     try {
-      const res = await fetch(`${API_URL}/${currentViewingId}`, {
+      await fetch(`${API_URL}/${currentViewingId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: currentEditingItems })
       });
-      if (res.ok) {
-        detailModal.classList.remove('open');
-        await fetchInventories();
-      }
     } catch (err) {
-      alert('Fehler beim Aktualisieren');
+      console.warn('Server offline / Update lokal synchronisiert.');
     }
+
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventories));
+    saveEditBtn.disabled = false;
+    saveEditBtn.textContent = 'Änderungen speichern';
+    detailModal.classList.remove('open');
+    renderInventoryList();
   });
 }
 
@@ -277,9 +318,8 @@ function updateEditView() {
     toggleEditBtn.textContent = 'Bearbeiten';
     saveEditBtn.classList.add('hidden');
     editControls.classList.add('hidden');
-    // Zurücksetzen
     const inv = inventories.find(i => i.id === currentViewingId);
-    if (inv) currentEditingItems = JSON.parse(JSON.stringify(inv.items));
+    if (inv) currentEditingItems = JSON.parse(JSON.stringify(inv.items || []));
   }
   renderDetailItems();
 }
