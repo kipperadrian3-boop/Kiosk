@@ -1,10 +1,11 @@
 const { put, list } = require('@vercel/blob');
 
 const BLOB_FILENAME = 'inventory.json';
+const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN || 'vercel_blob_rw_5JWbSdCKNcw1sQ4r_hqAe19KKVjL3HctWSIry0oKTge2cps';
 
 async function getInventories() {
   try {
-    const { blobs } = await list();
+    const { blobs } = await list({ token: BLOB_TOKEN });
     const found = blobs.find(b => b.pathname === BLOB_FILENAME);
     if (found) {
       const res = await fetch(found.url, { cache: 'no-store' });
@@ -21,12 +22,13 @@ async function getInventories() {
 async function saveInventories(data) {
   await put(BLOB_FILENAME, JSON.stringify(data, null, 2), {
     access: 'public',
-    addRandomSuffix: false
+    addRandomSuffix: false,
+    token: BLOB_TOKEN
   });
 }
 
 module.exports = async function handler(req, res) {
-  // CORS
+  // CORS Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -45,7 +47,11 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { items } = req.body || {};
+      let body = req.body;
+      if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch(e) {}
+      }
+      const { items } = body || {};
       if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Keine Artikel angegeben' });
       }
@@ -68,7 +74,11 @@ module.exports = async function handler(req, res) {
     }
 
     if (req.method === 'PUT') {
-      const { items } = req.body || {};
+      let body = req.body;
+      if (typeof body === 'string') {
+        try { body = JSON.parse(body); } catch(e) {}
+      }
+      const { items } = body || {};
       if (!id || !items || !Array.isArray(items)) {
         return res.status(400).json({ error: 'Ungültige Daten oder fehlende ID' });
       }
