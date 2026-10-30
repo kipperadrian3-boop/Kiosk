@@ -187,7 +187,6 @@ function renderInventoryList() {
           <button class="card-menu-btn" aria-label="Menü" title="Menü">&#8942;</button>
           <div class="card-dropdown-menu">
             <button class="card-dropdown-item" data-action="download-excel">Download Excel</button>
-            <button class="card-dropdown-item" data-action="download-pdf">Download PDF</button>
           </div>
         </div>
       </div>
@@ -217,13 +216,6 @@ function renderInventoryList() {
       e.stopPropagation();
       dropdown.classList.remove('open');
       downloadInventoryExcel(inv);
-    });
-
-    // Download PDF
-    card.querySelector('[data-action="download-pdf"]').addEventListener('click', (e) => {
-      e.stopPropagation();
-      dropdown.classList.remove('open');
-      downloadInventoryPDF(inv);
     });
 
     inventoryList.appendChild(card);
@@ -272,6 +264,12 @@ function downloadInventoryExcel(inventory) {
   const { rows, gesamtMenge, gesamtAusgaben, gesamtGewinn } = buildInventoryData(inventory);
   const headers = ['Produkt', 'Menge', 'Einkaufspreis', 'Verkaufspreis', 'Ausgaben', 'Gewinn'];
 
+  // Hilfsfunktion: Preis als sauberen Text formatieren
+  function priceText(val) {
+    if (val === null || val === undefined || val === '') return '';
+    return Number(val).toFixed(2) + ' \u20AC';
+  }
+
   // Dünner Rahmen für alle Zellen
   const thinBorder = {
     top: { style: 'thin', color: { rgb: 'D1D5DB' } },
@@ -280,7 +278,7 @@ function downloadInventoryExcel(inventory) {
     right: { style: 'thin', color: { rgb: 'D1D5DB' } }
   };
 
-  // Header-Style: Leichter gelber Textmarker-Hintergrund, fett, gleiche Größe
+  // Header-Style: Leichter gelber Textmarker-Hintergrund, fett
   const headerStyle = {
     font: { bold: true, sz: 10 },
     fill: { fgColor: { rgb: 'FFF3CD' } },
@@ -292,56 +290,68 @@ function downloadInventoryExcel(inventory) {
   const cellStyle = { border: thinBorder, alignment: { vertical: 'center' } };
   const cellStyleRight = { border: thinBorder, alignment: { horizontal: 'right', vertical: 'center' } };
 
-  // GESAMT-Style: Leichter grüner Textmarker-Hintergrund, fett, gleiche Größe
+  // GESAMT-Style: Leichter grüner Textmarker-Hintergrund, fett
   const gesamtStyle = {
     font: { bold: true, sz: 10 },
     fill: { fgColor: { rgb: 'D4EDDA' } },
     alignment: { vertical: 'center' },
     border: thinBorder
   };
-
   const gesamtStyleRight = {
-    ...gesamtStyle,
-    alignment: { horizontal: 'right', vertical: 'center' }
+    font: { bold: true, sz: 10 },
+    fill: { fgColor: { rgb: 'D4EDDA' } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: thinBorder
   };
 
-  // Worksheet manuell aufbauen
-  const wsData = [];
+  // Alle Zeilen als Array of Arrays aufbauen
+  const aoa = [];
 
-  // Header-Zeile
-  wsData.push(headers.map(h => ({ v: h, t: 's', s: headerStyle })));
+  // Header
+  aoa.push(headers);
 
-  // Datenzeilen
+  // Datenzeilen: Menge als Zahl, Preise als Text mit €
   rows.forEach(r => {
-    wsData.push([
-      { v: r.name, t: 's', s: cellStyle },
-      { v: r.menge, t: 'n', s: cellStyleRight },
-      { v: r.ek, t: 'n', s: cellStyleRight, z: '#,##0.00 €' },
-      { v: r.vk, t: 'n', s: cellStyleRight, z: '#,##0.00 €' },
-      { v: r.ausgaben, t: 'n', s: cellStyleRight, z: '#,##0.00 €' },
-      { v: r.gewinn, t: 'n', s: cellStyleRight, z: '#,##0.00 €' }
+    aoa.push([
+      r.name,
+      r.menge,
+      priceText(r.ek),
+      priceText(r.vk),
+      priceText(r.ausgaben),
+      priceText(r.gewinn)
     ]);
   });
 
   // GESAMT-Zeile
-  wsData.push([
-    { v: 'GESAMT', t: 's', s: gesamtStyle },
-    { v: gesamtMenge, t: 'n', s: gesamtStyleRight },
-    { v: '', t: 's', s: gesamtStyle },
-    { v: '', t: 's', s: gesamtStyle },
-    { v: gesamtAusgaben, t: 'n', s: gesamtStyleRight, z: '#,##0.00 €' },
-    { v: gesamtGewinn, t: 'n', s: gesamtStyleRight, z: '#,##0.00 €' }
+  aoa.push([
+    'GESAMT',
+    gesamtMenge,
+    '',
+    '',
+    priceText(gesamtAusgaben),
+    priceText(gesamtGewinn)
   ]);
 
-  const ws = XLSX.utils.aoa_to_sheet(wsData.map(row => row.map(c => c.v)));
+  // Worksheet erstellen
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-  // Styles auf Zellen anwenden
-  for (let r = 0; r < wsData.length; r++) {
-    for (let c = 0; c < wsData[r].length; c++) {
+  // Styles anwenden
+  const totalRows = aoa.length;
+  const totalCols = headers.length;
+  for (let r = 0; r < totalRows; r++) {
+    for (let c = 0; c < totalCols; c++) {
       const cellRef = XLSX.utils.encode_cell({ r, c });
-      if (ws[cellRef]) {
-        ws[cellRef].s = wsData[r][c].s;
-        if (wsData[r][c].z) ws[cellRef].z = wsData[r][c].z;
+      if (!ws[cellRef]) continue;
+
+      if (r === 0) {
+        // Header-Zeile
+        ws[cellRef].s = headerStyle;
+      } else if (r === totalRows - 1) {
+        // GESAMT-Zeile
+        ws[cellRef].s = (c >= 1) ? gesamtStyleRight : gesamtStyle;
+      } else {
+        // Normale Datenzeile
+        ws[cellRef].s = (c >= 1) ? cellStyleRight : cellStyle;
       }
     }
   }
@@ -354,86 +364,6 @@ function downloadInventoryExcel(inventory) {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inventur');
   XLSX.writeFile(wb, buildFileName(inventory, 'xlsx'));
-}
-
-// PDF-Download mit jsPDF + autotable
-function downloadInventoryPDF(inventory) {
-  const { rows, gesamtMenge, gesamtAusgaben, gesamtGewinn } = buildInventoryData(inventory);
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-
-  // Titel
-  const titleText = inventory.name || 'Inventur';
-  const d = new Date(inventory.createdAt);
-  const dateStr = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text(titleText, 14, 20);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(120);
-  doc.text(`Erstellt am: ${dateStr}`, 14, 28);
-  doc.setTextColor(0);
-
-  // Tabellen-Daten
-  const tableHead = [['Produkt', 'Menge', 'Einkaufspreis', 'Verkaufspreis', 'Ausgaben', 'Gewinn']];
-  const tableBody = rows.map(r => [
-    r.name,
-    r.menge.toString(),
-    r.ek.toFixed(2) + ' €',
-    r.vk.toFixed(2) + ' €',
-    r.ausgaben.toFixed(2) + ' €',
-    r.gewinn.toFixed(2) + ' €'
-  ]);
-
-  // GESAMT-Zeile
-  tableBody.push([
-    'GESAMT',
-    gesamtMenge.toString(),
-    '',
-    '',
-    gesamtAusgaben.toFixed(2) + ' €',
-    gesamtGewinn.toFixed(2) + ' €'
-  ]);
-
-  const lastRowIdx = tableBody.length - 1;
-
-  doc.autoTable({
-    head: tableHead,
-    body: tableBody,
-    startY: 34,
-    theme: 'grid',
-    headStyles: {
-      fillColor: [31, 41, 55],
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 10,
-      halign: 'center'
-    },
-    bodyStyles: {
-      fontSize: 9,
-      cellPadding: 4
-    },
-    columnStyles: {
-      0: { halign: 'left' },
-      1: { halign: 'right' },
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right' },
-      5: { halign: 'right' }
-    },
-    didParseCell: function(data) {
-      if (data.section === 'body' && data.row.index === lastRowIdx) {
-        data.cell.styles.fillColor = [46, 160, 67];
-        data.cell.styles.textColor = [255, 255, 255];
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fontSize = 10;
-      }
-    }
-  });
-
-  doc.save(buildFileName(inventory, 'pdf'));
 }
 
 // Infinite Scroll Observer
