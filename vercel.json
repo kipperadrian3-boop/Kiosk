@@ -1,7 +1,5 @@
 {
   "rewrites": [
-    { "source": "/api/inventories/:id", "destination": "/api/inventories?id=:id" },
-    { "source": "/api/inventories", "destination": "/api/inventories" }
-  ],
-  "outputDirectory": "public"
+    { "source": "/api/inventories/:id", "destination": "/api/inventories?id=:id" }
+  ]
 }
