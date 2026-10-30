@@ -302,6 +302,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .modal-footer {
