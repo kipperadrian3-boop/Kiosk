@@ -227,7 +227,8 @@ body {
   font-size: 0.8rem;
   color: var(--text-muted);
   display: flex;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
 }
 
 .card-badge {

@@ -58,11 +58,33 @@
     </main>
   </div>
 
-  <!-- Modal: Neue Inventur erstellen -->
+  <!-- Modal 1: Name der Inventur festlegen -->
+  <div id="name-modal" class="modal">
+    <div class="modal-content confirm-modal-content">
+      <div class="modal-header">
+        <h3>Neue Inventur starten</h3>
+        <button id="close-name-modal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label for="inventory-name-input">Name der Inventur</label>
+          <input type="text" id="inventory-name-input" placeholder="z. B. Kiosk Woche 44 oder Hauptlager" autofocus required>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="name-next-btn" class="btn primary-btn full-width">Weiter zu den Produkten &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal 2: Neue Inventur erfassen (Produkte) -->
   <div id="create-modal" class="modal">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>Neue Inventur erfassen</h3>
+        <div>
+          <h3 id="create-modal-title">Produkte erfassen</h3>
+          <span id="create-modal-subtitle" class="card-meta"></span>
+        </div>
         <button id="close-create-modal" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">

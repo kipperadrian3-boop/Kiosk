@@ -16,6 +16,7 @@ const inventoriesRef = db.ref('inventories');
 // State
 let inventories = [];
 let tempItems = [];
+let currentInventoryName = '';
 let currentViewingId = null;
 let isEditMode = false;
 let displayedLimit = 10;
@@ -28,8 +29,15 @@ const drawerOverlay = document.getElementById('drawer-overlay');
 const menuInventoryLink = document.getElementById('menu-inventory-link');
 
 const openCreateBtn = document.getElementById('open-create-btn');
+const nameModal = document.getElementById('name-modal');
+const closeNameModal = document.getElementById('close-name-modal');
+const inventoryNameInput = document.getElementById('inventory-name-input');
+const nameNextBtn = document.getElementById('name-next-btn');
+
 const createModal = document.getElementById('create-modal');
 const closeCreateModal = document.getElementById('close-create-modal');
+const createModalTitle = document.getElementById('create-modal-title');
+const createModalSubtitle = document.getElementById('create-modal-subtitle');
 
 const addItemForm = document.getElementById('add-item-form');
 const productNameInput = document.getElementById('product-name');
@@ -158,10 +166,11 @@ function renderInventoryList() {
     card.className = 'inventory-card';
     const items = inv.items || [];
     const totalCount = items.reduce((sum, it) => sum + it.quantity, 0);
+    const titleText = inv.name ? inv.name : `Inventur vom ${formatDate(inv.createdAt)}`;
 
     card.innerHTML = `
       <div>
-        <div class="card-title">Inventur vom ${formatDate(inv.createdAt)}</div>
+        <div class="card-title">${titleText}</div>
         <div class="card-meta">
           <span>Erstellt: ${formatDate(inv.createdAt)}</span>
           ${inv.updatedAt !== inv.createdAt ? `<span>Bearbeitet: ${formatDate(inv.updatedAt)}</span>` : ''}
@@ -187,12 +196,42 @@ function setupInfiniteScroll() {
   observer.observe(scrollSentinel);
 }
 
-// Create Modal Logic
+// Create Modal Logic (Schritt 1: Name -> Schritt 2: Produkte)
 function setupCreateModal() {
+  // Öffne Schritt 1: Name
   openCreateBtn.addEventListener('click', () => {
+    inventoryNameInput.value = '';
+    openModal(nameModal);
+    setTimeout(() => inventoryNameInput.focus(), 150);
+  });
+
+  closeNameModal.addEventListener('click', () => {
+    closeModal(nameModal);
+  });
+
+  function proceedToProducts() {
+    const enteredName = inventoryNameInput.value.trim();
+    if (!enteredName) {
+      inventoryNameInput.focus();
+      return;
+    }
+    currentInventoryName = enteredName;
+    closeModal(nameModal);
+
+    // Initialisiere Schritt 2
     tempItems = [];
     renderTempItems();
+    if (createModalTitle) createModalTitle.textContent = currentInventoryName;
+    if (createModalSubtitle) createModalSubtitle.textContent = `Erstellt am: ${formatDate(new Date().toISOString())}`;
     openModal(createModal);
+  }
+
+  nameNextBtn.addEventListener('click', proceedToProducts);
+  inventoryNameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      proceedToProducts();
+    }
   });
 
   closeCreateModal.addEventListener('click', () => {
@@ -221,6 +260,7 @@ function setupCreateModal() {
 
     const now = new Date().toISOString();
     const newInventory = {
+      name: currentInventoryName || `Inventur vom ${formatDate(now)}`,
       createdAt: now,
       updatedAt: now,
       items: [...tempItems]
@@ -278,9 +318,9 @@ function openDetail(firebaseKey) {
   currentEditingItems = JSON.parse(JSON.stringify(inv.items || []));
   isEditMode = false;
 
-  detailTitle.textContent = 'Inventur-Details';
+  detailTitle.textContent = inv.name ? inv.name : 'Inventur-Details';
   detailCreated.textContent = `Erstellt: ${formatDate(inv.createdAt)}`;
-  detailUpdated.textContent = inv.updatedAt !== inv.createdAt ? `Geändert: ${formatDate(inv.updatedAt)}` : '';
+  detailUpdated.textContent = inv.updatedAt !== inv.createdAt ? `Bearbeitet: ${formatDate(inv.updatedAt)}` : '';
 
   updateEditView();
   renderDetailItems();
