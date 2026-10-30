@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kiosk Inventur System</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Top Bar -->
+    <header class="top-nav">
+      <button id="menu-btn" class="icon-btn" aria-label="Menü öffnen">
+        <span class="bar"></span>
+        <span class="bar"></span>
+        <span class="bar"></span>
+      </button>
+      <h1 class="logo-title">Schul Kiosk</h1>
+      <button id="open-create-btn" class="add-inventory-btn" title="Inventur erstellen">
+        <span class="plus-icon">+</span>
+        <span class="btn-text">Inventur erstellen</span>
+      </button>
+    </header>
+
+    <!-- Sidebar Menu Drawer -->
+    <div id="drawer-overlay" class="overlay"></div>
+    <aside id="sidebar-drawer" class="drawer">
+      <div class="drawer-header">
+        <h2>Menü</h2>
+        <button id="close-drawer-btn" class="close-btn">&times;</button>
+      </div>
+      <nav class="drawer-nav">
+        <a href="#" id="menu-inventory-link" class="nav-item active">
+          <span>Inventar</span>
+        </a>
+      </nav>
+    </aside>
+
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <div class="content-header">
+        <h2>Inventur-Protokolle</h2>
+        <span class="counter-badge" id="inventory-count">0 Einträge</span>
+      </div>
+
+      <!-- Infinite Scroll / Dynamic List -->
+      <section id="inventory-list" class="inventory-list">
+        <!-- Wird per JS dynamisch befüllt -->
+      </section>
+      <div id="scroll-sentinel" class="sentinel"></div>
+    </main>
+  </div>
+
+  <!-- Modal: Neue Inventur erstellen -->
+  <div id="create-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Neue Inventur erfassen</h3>
+        <button id="close-create-modal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="add-item-form" class="item-input-row">
+          <div class="input-group flex-grow">
+            <label for="product-name">Produktname</label>
+            <input type="text" id="product-name" placeholder="z. B. Cola 0.33l" required>
+          </div>
+          <div class="input-group small">
+            <label for="product-qty">Anzahl</label>
+            <input type="number" id="product-qty" min="1" value="1" required>
+          </div>
+          <button type="submit" id="add-item-btn" class="btn primary-outline">Hinzufügen</button>
+        </form>
+
+        <div class="table-container">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Produkt</th>
+                <th class="text-right">Menge</th>
+                <th class="text-center">Aktion</th>
+              </tr>
+            </thead>
+            <tbody id="temp-items-tbody">
+              <!-- Dynamische Liste -->
+            </tbody>
+          </table>
+          <p id="empty-table-msg" class="empty-msg">Noch keine Artikel hinzugefügt.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="finish-inventory-btn" class="btn primary-btn full-width" disabled>Fertigstellen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Details / Bearbeiten -->
+  <div id="detail-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <h3 id="detail-title">Inventur-Details</h3>
+          <div class="dates-meta">
+            <span id="detail-created"></span>
+            <span id="detail-updated"></span>
+          </div>
+        </div>
+        <button id="close-detail-modal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- Bearbeitungs-Eingabe (im Edit-Modus aktivierbar) -->
+        <div id="edit-controls" class="edit-controls hidden">
+          <div class="item-input-row">
+            <input type="text" id="edit-product-name" placeholder="Produktname">
+            <input type="number" id="edit-product-qty" min="1" value="1">
+            <button id="edit-add-item-btn" class="btn primary-outline">Hinzufügen</button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Produkt</th>
+                <th class="text-right">Menge</th>
+                <th class="text-center edit-col hidden">Aktion</th>
+              </tr>
+            </thead>
+            <tbody id="detail-items-tbody">
+              <!-- Dynamische Liste -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer flex-row space-between">
+        <button id="delete-inventory-btn" class="btn danger-btn">Löschen</button>
+        <div class="right-actions">
+          <button id="toggle-edit-btn" class="btn secondary-btn">Bearbeiten</button>
+          <button id="save-edit-btn" class="btn primary-btn hidden">Änderungen speichern</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Löschen Bestätigung mit Sicherheitswort -->
+  <div id="confirm-delete-modal" class="modal">
+    <div class="modal-content confirm-modal-content">
+      <div class="modal-header">
+        <h3 class="danger-title">Wirklich Löschen ?</h3>
+        <button id="close-confirm-delete-modal" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-text">Diese Aktion kann nicht rückgängig gemacht werden. Bitte gib <strong>Löschen</strong> ein, um das Löschen zu bestätigen:</p>
+        <input type="text" id="confirm-delete-input" placeholder="Löschen" autocomplete="off">
+      </div>
+      <div class="modal-footer flex-row">
+        <button id="cancel-confirm-delete-btn" class="btn secondary-btn">Abbrechen</button>
+        <button id="execute-delete-btn" class="btn danger-btn glow-btn" disabled>Löschen</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+
+</body>
+</html>
