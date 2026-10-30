@@ -207,10 +207,34 @@ body {
 .inventory-frame {
   flex: 1 1 auto;
   min-height: 0;
+  height: calc(100vh - 170px);
+  max-height: calc(100vh - 170px);
+  background-color: rgba(22, 27, 34, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0.5rem 0.25rem 1rem 0;
+  padding: 1rem;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Sichtbare stylische Scrollbar */
+.inventory-frame::-webkit-scrollbar {
+  width: 8px;
+}
+
+.inventory-frame::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.inventory-frame::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+.inventory-frame::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }
 
 /* Inventory Cards */
