@@ -239,6 +239,11 @@ body {
   height: 20px;
 }
 
+body.modal-open {
+  overflow: hidden !important;
+  height: 100vh !important;
+}
+
 /* Modals */
 .modal {
   position: fixed;
@@ -255,6 +260,7 @@ body {
   transition: opacity 0.2s ease;
   z-index: 400;
   padding: 1rem;
+  overscroll-behavior: contain;
 }
 
 .modal.open {
@@ -268,7 +274,7 @@ body {
   border-radius: 12px;
   width: 100%;
   max-width: 550px;
-  max-height: 90vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -299,11 +305,13 @@ body {
 .modal-body {
   padding: 1.25rem;
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
   flex: 1 1 auto;
   min-height: 0;
+  max-height: 60vh;
 }
 
 .modal-footer {
@@ -470,7 +478,9 @@ input:focus {
 .table-container {
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  overflow: hidden;
+  overflow-y: auto;
+  max-height: 280px;
+  overscroll-behavior: contain;
 }
 
 .items-table {

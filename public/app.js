@@ -65,6 +65,21 @@ const executeDeleteBtn = document.getElementById('execute-delete-btn');
 
 let currentEditingItems = [];
 
+// Modal state helpers to freeze background scroll
+function openModal(modalEl) {
+  modalEl.classList.add('open');
+  document.body.classList.add('modal-open');
+}
+
+function closeModal(modalEl) {
+  modalEl.classList.remove('open');
+  // Only remove modal-open from body if no other modal is open
+  const anyOpen = document.querySelector('.modal.open');
+  if (!anyOpen) {
+    document.body.classList.remove('modal-open');
+  }
+}
+
 // Init
 document.addEventListener('DOMContentLoaded', () => {
   setupDrawer();
@@ -177,11 +192,11 @@ function setupCreateModal() {
   openCreateBtn.addEventListener('click', () => {
     tempItems = [];
     renderTempItems();
-    createModal.classList.add('open');
+    openModal(createModal);
   });
 
   closeCreateModal.addEventListener('click', () => {
-    createModal.classList.remove('open');
+    closeModal(createModal);
   });
 
   addItemForm.addEventListener('submit', (e) => {
@@ -214,7 +229,7 @@ function setupCreateModal() {
     // In Firebase speichern – push() erzeugt automatisch eine einzigartige ID
     inventoriesRef.push(newInventory)
       .then(() => {
-        createModal.classList.remove('open');
+        closeModal(createModal);
         finishInventoryBtn.textContent = 'Fertigstellen';
         finishInventoryBtn.disabled = false;
         // Liste aktualisiert sich automatisch durch den Realtime Listener!
@@ -269,12 +284,12 @@ function openDetail(firebaseKey) {
 
   updateEditView();
   renderDetailItems();
-  detailModal.classList.add('open');
+  openModal(detailModal);
 }
 
 function setupDetailModal() {
   closeDetailModal.addEventListener('click', () => {
-    detailModal.classList.remove('open');
+    closeModal(detailModal);
   });
 
   toggleEditBtn.addEventListener('click', () => {
@@ -307,7 +322,7 @@ function setupDetailModal() {
       .then(() => {
         saveEditBtn.disabled = false;
         saveEditBtn.textContent = 'Änderungen speichern';
-        detailModal.classList.remove('open');
+        closeModal(detailModal);
       })
       .catch((err) => {
         alert('Fehler: ' + err.message);
@@ -320,12 +335,12 @@ function setupDetailModal() {
   deleteInventoryBtn.addEventListener('click', () => {
     confirmDeleteInput.value = '';
     executeDeleteBtn.disabled = true;
-    confirmDeleteModal.classList.add('open');
+    openModal(confirmDeleteModal);
     confirmDeleteInput.focus();
   });
 
   function closeConfirmModal() {
-    confirmDeleteModal.classList.remove('open');
+    closeModal(confirmDeleteModal);
     confirmDeleteInput.value = '';
     executeDeleteBtn.disabled = true;
   }
@@ -348,7 +363,7 @@ function setupDetailModal() {
         executeDeleteBtn.textContent = 'Löschen';
         executeDeleteBtn.disabled = true;
         closeConfirmModal();
-        detailModal.classList.remove('open');
+        closeModal(detailModal);
       })
       .catch((err) => {
         alert('Fehler: ' + err.message);
