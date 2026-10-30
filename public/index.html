@@ -3,11 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kiosk Inventur System</title>
+  <title>Schul Kiosk - Inventur System</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 </head>
 <body>
   <div class="app-container">
@@ -38,7 +42,6 @@
         </a>
       </nav>
     </aside>
-
 
     <!-- Main Content Area -->
     <main class="main-content">
@@ -111,7 +114,7 @@
         <button id="close-detail-modal" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <!-- Bearbeitungs-Eingabe (im Edit-Modus aktivierbar) -->
+        <!-- Bearbeitungs-Eingabe (im Edit-Modus) -->
         <div id="edit-controls" class="edit-controls hidden">
           <div class="item-input-row">
             <input type="text" id="edit-product-name" placeholder="Produktname">
@@ -145,7 +148,7 @@
     </div>
   </div>
 
-  <!-- Modal: Löschen Bestätigung mit Sicherheitswort -->
+  <!-- Modal: Löschen Bestätigung -->
   <div id="confirm-delete-modal" class="modal">
     <div class="modal-content confirm-modal-content">
       <div class="modal-header">
@@ -164,6 +167,5 @@
   </div>
 
   <script src="app.js"></script>
-
 </body>
 </html>

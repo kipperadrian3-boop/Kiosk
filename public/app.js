@@ -1,5 +1,17 @@
-const API_URL = '/api/inventories';
-const LOCAL_STORAGE_KEY = 'kiosk_inventories_cache';
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyCqAF7tFh-AsYgKHfKCybga3DjrawCkt7k",
+  authDomain: "kiosk-database-3b387.firebaseapp.com",
+  databaseURL: "https://kiosk-database-3b387-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "kiosk-database-3b387",
+  storageBucket: "kiosk-database-3b387.firebasestorage.app",
+  messagingSenderId: "80176737991",
+  appId: "1:80176737991:web:009ae92e43e394ace158e2"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const inventoriesRef = db.ref('inventories');
 
 // State
 let inventories = [];
@@ -53,14 +65,13 @@ const executeDeleteBtn = document.getElementById('execute-delete-btn');
 
 let currentEditingItems = [];
 
-
 // Init
 document.addEventListener('DOMContentLoaded', () => {
   setupDrawer();
   setupCreateModal();
   setupDetailModal();
   setupInfiniteScroll();
-  fetchInventories();
+  listenToFirebase();
 });
 
 // Drawer Controls
@@ -82,23 +93,26 @@ function setupDrawer() {
   });
 }
 
-// Fetch & Render Inventories
-async function fetchInventories() {
-  try {
-    const res = await fetch(API_URL);
-    if (!res.ok) throw new Error('API nicht erreichbar');
-    inventories = await res.json();
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventories));
-  } catch (err) {
-    console.warn('Fallback zu lokalem Speicher:', err);
-    const local = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (local) {
-      inventories = JSON.parse(local);
+// Firebase Realtime Listener – hält die Liste IMMER live synchron
+function listenToFirebase() {
+  inventoriesRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      // Firebase gibt ein Objekt zurück, wir machen ein Array daraus
+      inventories = Object.keys(data).map(key => ({
+        firebaseKey: key,
+        ...data[key]
+      }));
+      // Neueste zuerst
+      inventories.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     } else {
       inventories = [];
     }
-  }
-  renderInventoryList();
+    renderInventoryList();
+  }, (error) => {
+    console.error('Firebase Fehler:', error);
+    inventoryList.innerHTML = '<p class="empty-msg">Verbindung zur Datenbank fehlgeschlagen. Prüfe die Firebase-Regeln.</p>';
+  });
 }
 
 function formatDate(isoString) {
@@ -127,7 +141,8 @@ function renderInventoryList() {
   slice.forEach((inv) => {
     const card = document.createElement('div');
     card.className = 'inventory-card';
-    const totalCount = (inv.items || []).reduce((sum, it) => sum + it.quantity, 0);
+    const items = inv.items || [];
+    const totalCount = items.reduce((sum, it) => sum + it.quantity, 0);
 
     card.innerHTML = `
       <div>
@@ -140,8 +155,7 @@ function renderInventoryList() {
       <div class="card-badge">${totalCount} Stk.</div>
     `;
 
-
-    card.addEventListener('click', () => openDetail(inv.id));
+    card.addEventListener('click', () => openDetail(inv.firebaseKey));
     inventoryList.appendChild(card);
   });
 }
@@ -184,44 +198,32 @@ function setupCreateModal() {
     }
   });
 
-  finishInventoryBtn.addEventListener('click', async () => {
+  finishInventoryBtn.addEventListener('click', () => {
     if (tempItems.length === 0) return;
-    
+
     finishInventoryBtn.disabled = true;
     finishInventoryBtn.textContent = 'Wird gespeichert...';
 
-    const newRecord = {
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+    const now = new Date().toISOString();
+    const newInventory = {
+      createdAt: now,
+      updatedAt: now,
       items: [...tempItems]
     };
 
-    try {
-      const res = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: tempItems })
+    // In Firebase speichern – push() erzeugt automatisch eine einzigartige ID
+    inventoriesRef.push(newInventory)
+      .then(() => {
+        createModal.classList.remove('open');
+        finishInventoryBtn.textContent = 'Fertigstellen';
+        finishInventoryBtn.disabled = false;
+        // Liste aktualisiert sich automatisch durch den Realtime Listener!
+      })
+      .catch((err) => {
+        alert('Fehler beim Speichern: ' + err.message);
+        finishInventoryBtn.textContent = 'Fertigstellen';
+        finishInventoryBtn.disabled = false;
       });
-
-      if (res.ok) {
-        const saved = await res.json();
-        inventories.unshift(saved);
-      } else {
-        // Fallback falls Serverless temporär blockiert
-        inventories.unshift(newRecord);
-      }
-    } catch (err) {
-      console.warn('Server offline / Request fehlgeschlagen. Lokale Speicherung aktiv:', err);
-      inventories.unshift(newRecord);
-    }
-
-    // Sofort lokal persistieren und anzeigen
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventories));
-    createModal.classList.remove('open');
-    finishInventoryBtn.textContent = 'Fertigstellen';
-    finishInventoryBtn.disabled = false;
-    renderInventoryList();
   });
 }
 
@@ -253,15 +255,15 @@ function renderTempItems() {
 }
 
 // Details & Edit Logic
-function openDetail(id) {
-  const inv = inventories.find(i => i.id === id);
+function openDetail(firebaseKey) {
+  const inv = inventories.find(i => i.firebaseKey === firebaseKey);
   if (!inv) return;
 
-  currentViewingId = id;
+  currentViewingId = firebaseKey;
   currentEditingItems = JSON.parse(JSON.stringify(inv.items || []));
   isEditMode = false;
 
-  detailTitle.textContent = `Inventur-Details`;
+  detailTitle.textContent = 'Inventur-Details';
   detailCreated.textContent = `Erstellt: ${formatDate(inv.createdAt)}`;
   detailUpdated.textContent = inv.updatedAt !== inv.createdAt ? `Geändert: ${formatDate(inv.updatedAt)}` : '';
 
@@ -269,7 +271,6 @@ function openDetail(id) {
   renderDetailItems();
   detailModal.classList.add('open');
 }
-
 
 function setupDetailModal() {
   closeDetailModal.addEventListener('click', () => {
@@ -292,34 +293,30 @@ function setupDetailModal() {
     }
   });
 
-  saveEditBtn.addEventListener('click', async () => {
+  // Speichern
+  saveEditBtn.addEventListener('click', () => {
     saveEditBtn.disabled = true;
     saveEditBtn.textContent = 'Speichern...';
 
-    const index = inventories.findIndex(i => i.id === currentViewingId);
-    if (index !== -1) {
-      inventories[index].items = [...currentEditingItems];
-      inventories[index].updatedAt = new Date().toISOString();
-    }
+    const updates = {
+      items: [...currentEditingItems],
+      updatedAt: new Date().toISOString()
+    };
 
-    try {
-      await fetch(`${API_URL}/${currentViewingId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: currentEditingItems })
+    inventoriesRef.child(currentViewingId).update(updates)
+      .then(() => {
+        saveEditBtn.disabled = false;
+        saveEditBtn.textContent = 'Änderungen speichern';
+        detailModal.classList.remove('open');
+      })
+      .catch((err) => {
+        alert('Fehler: ' + err.message);
+        saveEditBtn.disabled = false;
+        saveEditBtn.textContent = 'Änderungen speichern';
       });
-    } catch (err) {
-      console.warn('Server offline / Update lokal synchronisiert.');
-    }
-
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventories));
-    saveEditBtn.disabled = false;
-    saveEditBtn.textContent = 'Änderungen speichern';
-    detailModal.classList.remove('open');
-    renderInventoryList();
   });
 
-  // Löschen Flow mit Sicherheitsbestätigung
+  // Löschen Flow
   deleteInventoryBtn.addEventListener('click', () => {
     confirmDeleteInput.value = '';
     executeDeleteBtn.disabled = true;
@@ -336,41 +333,29 @@ function setupDetailModal() {
   closeConfirmDeleteModal.addEventListener('click', closeConfirmModal);
   cancelConfirmDeleteBtn.addEventListener('click', closeConfirmModal);
 
-  // Textfeld-Eingabe überwachen: Erst wenn "löschen" oder "Löschen" steht, leuchtet der Button auf
   confirmDeleteInput.addEventListener('input', () => {
     const val = confirmDeleteInput.value.trim().toLowerCase();
-    if (val === 'löschen') {
-      executeDeleteBtn.disabled = false;
-    } else {
-      executeDeleteBtn.disabled = true;
-    }
+    executeDeleteBtn.disabled = val !== 'löschen';
   });
 
-  executeDeleteBtn.addEventListener('click', async () => {
+  executeDeleteBtn.addEventListener('click', () => {
     if (executeDeleteBtn.disabled) return;
     executeDeleteBtn.disabled = true;
     executeDeleteBtn.textContent = 'Wird gelöscht...';
 
-    const idToDelete = currentViewingId;
-    inventories = inventories.filter(i => i.id !== idToDelete);
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(inventories));
-
-    try {
-      await fetch(`${API_URL}/${idToDelete}`, {
-        method: 'DELETE'
+    inventoriesRef.child(currentViewingId).remove()
+      .then(() => {
+        executeDeleteBtn.textContent = 'Löschen';
+        executeDeleteBtn.disabled = true;
+        closeConfirmModal();
+        detailModal.classList.remove('open');
+      })
+      .catch((err) => {
+        alert('Fehler: ' + err.message);
+        executeDeleteBtn.textContent = 'Löschen';
       });
-    } catch (err) {
-      console.warn('DELETE Request offline ausgeführt / lokal synchronisiert');
-    }
-
-    executeDeleteBtn.textContent = 'Löschen';
-    executeDeleteBtn.disabled = true;
-    closeConfirmModal();
-    detailModal.classList.remove('open');
-    renderInventoryList();
   });
 }
-
 
 function updateEditView() {
   if (isEditMode) {
@@ -381,7 +366,7 @@ function updateEditView() {
     toggleEditBtn.textContent = 'Bearbeiten';
     saveEditBtn.classList.add('hidden');
     editControls.classList.add('hidden');
-    const inv = inventories.find(i => i.id === currentViewingId);
+    const inv = inventories.find(i => i.firebaseKey === currentViewingId);
     if (inv) currentEditingItems = JSON.parse(JSON.stringify(inv.items || []));
   }
   renderDetailItems();
@@ -409,5 +394,4 @@ function renderDetailItems() {
 
     detailItemsTbody.appendChild(tr);
   });
-
 }
