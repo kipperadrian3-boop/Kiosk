@@ -437,13 +437,24 @@ body.modal-open {
 }
 
 .confirm-modal-content {
-  max-width: 420px;
+/* Form inputs & table */
+.inventory-modal-content {
+  max-width: 620px;
 }
 
-/* Form inputs & table */
-.item-input-row {
+.item-input-form {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.75rem;
+  background-color: var(--card-bg);
+  padding: 0.85rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.form-row-compact {
+  display: flex;
+  gap: 0.6rem;
   align-items: flex-end;
 }
 
@@ -451,6 +462,31 @@ body.modal-open {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.input-group.half {
+  flex: 1 1 50%;
+  width: 50%;
+}
+
+.input-group.third {
+  flex: 1 1 33.333%;
+  width: 33.333%;
+}
+
+.flex-end-btn {
+  display: flex;
+  align-items: flex-end;
+}
+
+.flex-end-btn button {
+  height: 38px;
+}
+
+.item-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
 }
 
 .input-group label {
@@ -626,41 +662,23 @@ input:focus {
   }
 
   /* Formular: Buttons & Inputs brechen sauber um statt die Breite zu sprengen */
-  .item-input-row {
-    flex-wrap: wrap;
-    gap: 0.6rem;
-  }
-
-  .item-input-row .input-group.flex-grow {
-    flex: 1 1 100%;
-    width: 100%;
-  }
-
-  .item-input-row .input-group.small {
-    flex: 1 1 calc(50% - 0.3rem);
-    width: calc(50% - 0.3rem);
-  }
-
-  .item-input-row button[type="submit"],
-  #add-item-btn,
-  #edit-add-item-btn {
-    flex: 1 1 calc(50% - 0.3rem);
-    width: calc(50% - 0.3rem);
-    height: 38px;
-  }
-
-  .edit-controls .item-input-row {
+  .form-row-compact {
     display: flex;
-    flex-direction: column;
+    gap: 0.5rem;
   }
 
-  .edit-controls .item-input-row input,
-  .edit-controls .item-input-row button {
-    width: 100% !important;
+  .form-row-compact .input-group.half {
+    flex: 1 1 calc(50% - 0.25rem);
+    width: calc(50% - 0.25rem);
+  }
+
+  .form-row-compact .input-group.third {
+    flex: 1 1 calc(33.333% - 0.35rem);
+    width: calc(33.333% - 0.35rem);
   }
 
   .items-table th, .items-table td {
-    padding: 0.6rem 0.5rem;
+    padding: 0.6rem 0.4rem;
     font-size: 0.8rem;
     word-break: break-word;
   }

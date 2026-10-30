@@ -81,7 +81,7 @@
 
   <!-- Modal 2: Neue Inventur erfassen (Produkte) -->
   <div id="create-modal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content inventory-modal-content">
       <div class="modal-header">
         <div>
           <h3 id="create-modal-title">Produkte erfassen</h3>
@@ -90,16 +90,32 @@
         <button id="close-create-modal" class="close-btn">&times;</button>
       </div>
       <div class="modal-body">
-        <form id="add-item-form" class="item-input-row">
-          <div class="input-group flex-grow">
-            <label for="product-name">Produktname</label>
-            <input type="text" id="product-name" placeholder="Produkt" required>
+        <form id="add-item-form" class="item-input-form">
+          <!-- Reihe 1: Produkt (halb so groß) & Anzahl -->
+          <div class="form-row-compact">
+            <div class="input-group half">
+              <label for="product-name">Produktname</label>
+              <input type="text" id="product-name" placeholder="Produkt" required>
+            </div>
+            <div class="input-group half">
+              <label for="product-qty">Anzahl</label>
+              <input type="number" id="product-qty" min="1" value="1" required>
+            </div>
           </div>
-          <div class="input-group small">
-            <label for="product-qty">Anzahl</label>
-            <input type="number" id="product-qty" min="1" value="1" required>
+          <!-- Reihe 2: Einkaufspreis (EK), Verkaufspreis (VK) & Hinzufügen-Button -->
+          <div class="form-row-compact">
+            <div class="input-group third">
+              <label for="product-ek">Einkaufspreis (EK)</label>
+              <input type="number" step="0.01" min="0" id="product-ek" placeholder="EK">
+            </div>
+            <div class="input-group third">
+              <label for="product-vk">Verkaufspreis (VK)</label>
+              <input type="number" step="0.01" min="0" id="product-vk" placeholder="VK">
+            </div>
+            <div class="input-group third flex-end-btn">
+              <button type="submit" id="add-item-btn" class="btn primary-outline full-width">Hinzufügen</button>
+            </div>
           </div>
-          <button type="submit" id="add-item-btn" class="btn primary-outline">Hinzufügen</button>
         </form>
 
         <div class="table-container">
@@ -108,6 +124,8 @@
               <tr>
                 <th>Produkt</th>
                 <th class="text-right">Menge</th>
+                <th class="text-right">EK</th>
+                <th class="text-right">VK</th>
                 <th class="text-center">Aktion</th>
               </tr>
             </thead>
@@ -126,7 +144,7 @@
 
   <!-- Modal: Details / Bearbeiten -->
   <div id="detail-modal" class="modal">
-    <div class="modal-content">
+    <div class="modal-content inventory-modal-content">
       <div class="modal-header">
         <div>
           <h3 id="detail-title">Inventur-Details</h3>
@@ -140,10 +158,30 @@
       <div class="modal-body">
         <!-- Bearbeitungs-Eingabe (im Edit-Modus) -->
         <div id="edit-controls" class="edit-controls hidden">
-          <div class="item-input-row">
-            <input type="text" id="edit-product-name" placeholder="Produkt">
-            <input type="number" id="edit-product-qty" min="1" value="1">
-            <button id="edit-add-item-btn" class="btn primary-outline">Hinzufügen</button>
+          <div class="item-input-form">
+            <div class="form-row-compact">
+              <div class="input-group half">
+                <label>Produktname</label>
+                <input type="text" id="edit-product-name" placeholder="Produkt">
+              </div>
+              <div class="input-group half">
+                <label>Anzahl</label>
+                <input type="number" id="edit-product-qty" min="1" value="1">
+              </div>
+            </div>
+            <div class="form-row-compact">
+              <div class="input-group third">
+                <label>Einkaufspreis (EK)</label>
+                <input type="number" step="0.01" min="0" id="edit-product-ek" placeholder="EK">
+              </div>
+              <div class="input-group third">
+                <label>Verkaufspreis (VK)</label>
+                <input type="number" step="0.01" min="0" id="edit-product-vk" placeholder="VK">
+              </div>
+              <div class="input-group third flex-end-btn">
+                <button id="edit-add-item-btn" class="btn primary-outline full-width">Hinzufügen</button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -153,6 +191,8 @@
               <tr>
                 <th>Produkt</th>
                 <th class="text-right">Menge</th>
+                <th class="text-right">EK</th>
+                <th class="text-right">VK</th>
                 <th class="text-center edit-col hidden">Aktion</th>
               </tr>
             </thead>

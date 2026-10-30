@@ -42,6 +42,8 @@ const createModalSubtitle = document.getElementById('create-modal-subtitle');
 const addItemForm = document.getElementById('add-item-form');
 const productNameInput = document.getElementById('product-name');
 const productQtyInput = document.getElementById('product-qty');
+const productEkInput = document.getElementById('product-ek');
+const productVkInput = document.getElementById('product-vk');
 const tempItemsTbody = document.getElementById('temp-items-tbody');
 const emptyTableMsg = document.getElementById('empty-table-msg');
 const finishInventoryBtn = document.getElementById('finish-inventory-btn');
@@ -62,6 +64,8 @@ const saveEditBtn = document.getElementById('save-edit-btn');
 const editControls = document.getElementById('edit-controls');
 const editProductName = document.getElementById('edit-product-name');
 const editProductQty = document.getElementById('edit-product-qty');
+const editProductEk = document.getElementById('edit-product-ek');
+const editProductVk = document.getElementById('edit-product-vk');
 const editAddItemBtn = document.getElementById('edit-add-item-btn');
 
 // Delete elements
@@ -246,6 +250,8 @@ function setupCreateModal() {
     e.preventDefault();
     const name = productNameInput.value.trim();
     const quantity = parseInt(productQtyInput.value, 10);
+    const ek = productEkInput.value ? parseFloat(productEkInput.value) : null;
+    const vk = productVkInput.value ? parseFloat(productVkInput.value) : null;
 
     if (!name) {
       // Leer: Fokus ins Feld setzen, um darauf hinzuweisen
@@ -254,12 +260,16 @@ function setupCreateModal() {
     }
 
     if (quantity > 0) {
-      tempItems.push({ name, quantity });
+      tempItems.push({ name, quantity, ek, vk });
       productNameInput.value = '';
       productQtyInput.value = '1';
+      productEkInput.value = '';
+      productVkInput.value = '';
       // Tastatur/Eingabefeld schließen (blur), damit es auf Handys/Tablets nicht aufploppt
       productNameInput.blur();
       productQtyInput.blur();
+      productEkInput.blur();
+      productVkInput.blur();
       if (document.activeElement) document.activeElement.blur();
       renderTempItems();
     }
@@ -295,6 +305,11 @@ function setupCreateModal() {
   });
 }
 
+function formatPrice(val) {
+  if (val === null || val === undefined || isNaN(val)) return '-';
+  return Number(val).toFixed(2) + ' €';
+}
+
 function renderTempItems() {
   tempItemsTbody.innerHTML = '';
   if (tempItems.length === 0) {
@@ -310,6 +325,8 @@ function renderTempItems() {
     tr.innerHTML = `
       <td>${it.name}</td>
       <td class="text-right">${it.quantity}</td>
+      <td class="text-right">${formatPrice(it.ek)}</td>
+      <td class="text-right">${formatPrice(it.vk)}</td>
       <td class="text-center">
         <button type="button" class="del-btn" data-index="${idx}">Entfernen</button>
       </td>
@@ -353,16 +370,23 @@ function setupDetailModal() {
   editAddItemBtn.addEventListener('click', () => {
     const name = editProductName.value.trim();
     const qty = parseInt(editProductQty.value, 10);
+    const ek = editProductEk.value ? parseFloat(editProductEk.value) : null;
+    const vk = editProductVk.value ? parseFloat(editProductVk.value) : null;
+
     if (!name) {
       editProductName.focus();
       return;
     }
     if (qty > 0) {
-      currentEditingItems.push({ name, quantity: qty });
+      currentEditingItems.push({ name, quantity: qty, ek, vk });
       editProductName.value = '';
       editProductQty.value = '1';
+      editProductEk.value = '';
+      editProductVk.value = '';
       editProductName.blur();
       editProductQty.blur();
+      editProductEk.blur();
+      editProductVk.blur();
       if (document.activeElement) document.activeElement.blur();
       renderDetailItems();
     }
@@ -457,6 +481,8 @@ function renderDetailItems() {
     tr.innerHTML = `
       <td>${it.name}</td>
       <td class="text-right">${it.quantity}</td>
+      <td class="text-right">${formatPrice(it.ek)}</td>
+      <td class="text-right">${formatPrice(it.vk)}</td>
       ${isEditMode ? `<td class="text-center"><button class="del-btn" data-idx="${idx}">Entfernen</button></td>` : ''}
     `;
 
