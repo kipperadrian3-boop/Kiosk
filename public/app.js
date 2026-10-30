@@ -157,7 +157,7 @@ function renderInventoryList() {
   const slice = inventories.slice(0, displayedLimit);
 
   if (slice.length === 0) {
-    inventoryList.innerHTML = '<p class="empty-msg">Noch keine Inventuren vorhanden. Klicke auf "+ Inventur erstellen".</p>';
+    inventoryList.innerHTML = '';
     return;
   }
 

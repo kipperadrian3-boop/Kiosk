@@ -633,3 +633,49 @@ input:focus {
     gap: 0.5rem;
   }
 }
+
+/* Tablet & iPad Optimierungen (z.B. iPad Mini, iPad 10.2", iPad Air, iPad Pro) */
+@media (min-width: 581px) and (max-width: 1024px) {
+  .main-content {
+    max-width: 92%;
+    padding: 1.5rem 1rem;
+  }
+
+  .top-nav {
+    padding: 1.1rem 1.5rem;
+  }
+
+  .modal {
+    padding: 1.5rem;
+  }
+
+  .modal-content {
+    max-width: 620px;
+    max-height: 88vh;
+  }
+
+  .modal-body {
+    padding: 1.5rem;
+    gap: 1.25rem;
+    max-height: 65vh;
+  }
+
+  .table-container {
+    max-height: 340px;
+  }
+
+  /* Komfortable Touch-Targets für iPads */
+  .btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  input[type="text"], input[type="number"] {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.95rem;
+  }
+
+  .inventory-card {
+    padding: 1.25rem 1.5rem;
+  }
+}
