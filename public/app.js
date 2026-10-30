@@ -272,46 +272,32 @@ function downloadInventoryExcel(inventory) {
   const { rows, gesamtMenge, gesamtAusgaben, gesamtGewinn } = buildInventoryData(inventory);
   const headers = ['Produkt', 'Menge', 'Einkaufspreis', 'Verkaufspreis', 'Ausgaben', 'Gewinn'];
 
-  // Header-Style: Dunkler Hintergrund, weiße Schrift, fett
+  // Dünner Rahmen für alle Zellen
+  const thinBorder = {
+    top: { style: 'thin', color: { rgb: 'D1D5DB' } },
+    bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
+    left: { style: 'thin', color: { rgb: 'D1D5DB' } },
+    right: { style: 'thin', color: { rgb: 'D1D5DB' } }
+  };
+
+  // Header-Style: Leichter gelber Textmarker-Hintergrund, fett, gleiche Größe
   const headerStyle = {
-    font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 12 },
-    fill: { fgColor: { rgb: '1F2937' } },
+    font: { bold: true, sz: 10 },
+    fill: { fgColor: { rgb: 'FFF3CD' } },
     alignment: { horizontal: 'center', vertical: 'center' },
-    border: {
-      top: { style: 'thin', color: { rgb: '4B5563' } },
-      bottom: { style: 'thin', color: { rgb: '4B5563' } },
-      left: { style: 'thin', color: { rgb: '4B5563' } },
-      right: { style: 'thin', color: { rgb: '4B5563' } }
-    }
+    border: thinBorder
   };
 
-  // Normale Zellen-Style
-  const cellStyle = {
-    border: {
-      top: { style: 'thin', color: { rgb: 'D1D5DB' } },
-      bottom: { style: 'thin', color: { rgb: 'D1D5DB' } },
-      left: { style: 'thin', color: { rgb: 'D1D5DB' } },
-      right: { style: 'thin', color: { rgb: 'D1D5DB' } }
-    },
-    alignment: { vertical: 'center' }
-  };
+  // Normale Zellen
+  const cellStyle = { border: thinBorder, alignment: { vertical: 'center' } };
+  const cellStyleRight = { border: thinBorder, alignment: { horizontal: 'right', vertical: 'center' } };
 
-  const cellStyleRight = {
-    ...cellStyle,
-    alignment: { horizontal: 'right', vertical: 'center' }
-  };
-
-  // GESAMT-Style: Grüner Hintergrund, weiße Schrift, fett
+  // GESAMT-Style: Leichter grüner Textmarker-Hintergrund, fett, gleiche Größe
   const gesamtStyle = {
-    font: { bold: true, color: { rgb: 'FFFFFF' }, sz: 11 },
-    fill: { fgColor: { rgb: '2EA043' } },
-    alignment: { horizontal: 'center', vertical: 'center' },
-    border: {
-      top: { style: 'medium', color: { rgb: '1F7A33' } },
-      bottom: { style: 'medium', color: { rgb: '1F7A33' } },
-      left: { style: 'medium', color: { rgb: '1F7A33' } },
-      right: { style: 'medium', color: { rgb: '1F7A33' } }
-    }
+    font: { bold: true, sz: 10 },
+    fill: { fgColor: { rgb: 'D4EDDA' } },
+    alignment: { vertical: 'center' },
+    border: thinBorder
   };
 
   const gesamtStyleRight = {
@@ -364,9 +350,6 @@ function downloadInventoryExcel(inventory) {
   ws['!cols'] = [
     { wch: 24 }, { wch: 10 }, { wch: 16 }, { wch: 16 }, { wch: 14 }, { wch: 14 }
   ];
-
-  // Zeilenhöhe für Header
-  ws['!rows'] = [{ hpx: 28 }];
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Inventur');
