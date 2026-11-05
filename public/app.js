@@ -117,7 +117,175 @@ function setupDrawer() {
   drawerOverlay.addEventListener('click', closeDrawer);
   menuInventoryLink.addEventListener('click', (e) => {
     e.preventDefault();
+    showView('inventory');
     closeDrawer();
+  });
+  document.getElementById('menu-home-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    showView('home');
+    closeDrawer();
+  });
+}
+
+// Zwischen Home und Inventar wechseln
+function showView(name) {
+  document.getElementById('view-home').classList.toggle('hidden', name !== 'home');
+  document.getElementById('view-inventory').classList.toggle('hidden', name !== 'inventory');
+  document.getElementById('menu-home-link').classList.toggle('active', name === 'home');
+  menuInventoryLink.classList.toggle('active', name === 'inventory');
+}
+
+// ---------- Home: Kuchendiagramm der letzten Inventur ----------
+// Farben in fester Reihenfolge (für dunklen Hintergrund), Rest = "Sonstige" in Grau
+const PIE_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#9085e9', '#e66767'];
+const PIE_OTHER_COLOR = '#5d6877';
+let lastSavedHomeJson = '';
+
+// Produkte der letzten Inventur zusammenfassen (gleiche Namen addieren), nach Menge sortiert
+function getProductShares(inv) {
+  const map = new Map();
+  (inv && inv.items ? inv.items : []).forEach((it) => {
+    const name = String(it.name || '').trim() || 'Ohne Name';
+    const key = name.toLowerCase();
+    const q = Number(it.quantity) || 0;
+    if (!map.has(key)) map.set(key, { name, quantity: 0 });
+    map.get(key).quantity += q;
+  });
+  const list = [...map.values()].filter(p => p.quantity > 0).sort((a, b) => b.quantity - a.quantity);
+  const total = list.reduce((s, p) => s + p.quantity, 0);
+  return {
+    total,
+    products: list.map(p => ({ ...p, percent: total ? Math.round(p.quantity / total * 1000) / 10 : 0 }))
+  };
+}
+
+function formatPercent(p) {
+  return p.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' %';
+}
+
+function polarPoint(cx, cy, r, angle) {
+  return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+}
+
+function renderHome() {
+  const svg = document.getElementById('pie-chart');
+  const legend = document.getElementById('pie-legend');
+  const subtitle = document.getElementById('home-subtitle');
+  const tooltip = document.getElementById('pie-tooltip');
+  if (!svg) return;
+
+  const latest = inventories[0];
+  const { total, products } = getProductShares(latest);
+
+  if (!latest || total === 0) {
+    subtitle.textContent = 'Noch keine Inventur vorhanden';
+    svg.innerHTML = '<circle cx="100" cy="100" r="90" fill="none" stroke="#252e3a" stroke-width="2" stroke-dasharray="4 4"/>';
+    legend.innerHTML = '<li class="legend-empty">Keine Produkte</li>';
+    saveHomeToFirebase(latest, total, products);
+    return;
+  }
+
+  subtitle.textContent = `${latest.name || 'Letzte Inventur'} · ${formatDate(latest.createdAt)} · ${total} Stk.`;
+
+  // Bis zu 7 Produkte bekommen eine eigene Farbe, der Rest wird im Diagramm zu "Sonstige"
+  const maxSlices = PIE_COLORS.length;
+  const top = products.length > maxSlices + 1 ? products.slice(0, maxSlices) : products;
+  const rest = products.length > maxSlices + 1 ? products.slice(maxSlices) : [];
+  const slices = top.map((p, i) => ({ ...p, color: PIE_COLORS[i] }));
+  if (rest.length) {
+    const q = rest.reduce((s, p) => s + p.quantity, 0);
+    slices.push({ name: `Sonstige (${rest.length})`, quantity: q, percent: Math.round(q / total * 1000) / 10, color: PIE_OTHER_COLOR });
+  }
+
+  const cx = 100, cy = 100, r = 92;
+  let angle = -Math.PI / 2;
+  svg.innerHTML = '';
+  slices.forEach((s, i) => {
+    const sweep = (s.quantity / total) * Math.PI * 2;
+    let el;
+    if (slices.length === 1) {
+      el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      el.setAttribute('cx', cx); el.setAttribute('cy', cy); el.setAttribute('r', r);
+    } else {
+      const [x1, y1] = polarPoint(cx, cy, r, angle);
+      const [x2, y2] = polarPoint(cx, cy, r, angle + sweep);
+      const large = sweep > Math.PI ? 1 : 0;
+      el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      el.setAttribute('d', `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} Z`);
+    }
+    el.setAttribute('fill', s.color);
+    el.setAttribute('class', 'pie-slice');
+    el.dataset.index = i;
+    el.addEventListener('pointerenter', () => highlightSlice(i));
+    el.addEventListener('pointermove', (e) => showPieTooltip(e, s));
+    el.addEventListener('pointerleave', () => { highlightSlice(-1); tooltip.classList.remove('show'); });
+    el.addEventListener('click', (e) => { highlightSlice(i); showPieTooltip(e, s); });
+    svg.appendChild(el);
+
+    // Prozent direkt im Stück anzeigen, wenn es groß genug ist
+    if (s.percent >= 7) {
+      const [lx, ly] = polarPoint(cx, cy, r * 0.62, angle + sweep / 2);
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', slices.length === 1 ? cx : lx);
+      t.setAttribute('y', slices.length === 1 ? cy : ly);
+      t.setAttribute('class', 'pie-label');
+      t.textContent = Math.round(s.percent) + '%';
+      svg.appendChild(t);
+    }
+    angle += sweep;
+  });
+
+  // Legende: alle Produkte der letzten Inventur mit Prozent
+  legend.innerHTML = '';
+  products.forEach((p, i) => {
+    const color = i < top.length ? PIE_COLORS[i] : PIE_OTHER_COLOR;
+    const sliceIndex = i < top.length ? i : slices.length - 1;
+    const li = document.createElement('li');
+    li.className = 'legend-item';
+    li.innerHTML = `
+      <span class="legend-swatch" style="background:${color}"></span>
+      <span class="legend-name">${escapeHtml(p.name)}</span>
+      <span class="legend-qty">${p.quantity} Stk.</span>
+      <span class="legend-pct">${formatPercent(p.percent)}</span>`;
+    li.addEventListener('pointerenter', () => highlightSlice(sliceIndex));
+    li.addEventListener('pointerleave', () => highlightSlice(-1));
+    legend.appendChild(li);
+  });
+
+  saveHomeToFirebase(latest, total, products);
+}
+
+function highlightSlice(index) {
+  document.querySelectorAll('#pie-chart .pie-slice').forEach((el) => {
+    el.classList.toggle('dim', index >= 0 && Number(el.dataset.index) !== index);
+  });
+}
+
+function showPieTooltip(e, slice) {
+  const tooltip = document.getElementById('pie-tooltip');
+  const wrap = tooltip.parentElement.getBoundingClientRect();
+  tooltip.innerHTML = `<strong>${escapeHtml(slice.name)}</strong><span>${slice.quantity} Stk. · ${formatPercent(slice.percent)}</span>`;
+  tooltip.style.left = (e.clientX - wrap.left) + 'px';
+  tooltip.style.top = (e.clientY - wrap.top) + 'px';
+  tooltip.classList.add('show');
+}
+
+// Diagramm-Daten in Firebase unter "home" speichern (nur wenn sich etwas geändert hat)
+function saveHomeToFirebase(latest, total, products) {
+  const data = latest ? {
+    inventoryKey: latest.firebaseKey,
+    inventoryName: latest.name || '',
+    inventoryCreatedAt: latest.createdAt || '',
+    totalQuantity: total,
+    products: products.map(p => ({ name: p.name, quantity: p.quantity, percent: p.percent }))
+  } : null;
+  const json = JSON.stringify(data);
+  if (json === lastSavedHomeJson) return;
+  lastSavedHomeJson = json;
+  const payload = data ? { ...data, updatedAt: new Date().toISOString() } : null;
+  db.ref('home').set(payload).catch((err) => {
+    console.error('Home konnte nicht gespeichert werden:', err);
+    lastSavedHomeJson = '';
   });
 }
 
@@ -137,6 +305,7 @@ function listenToFirebase() {
       inventories = [];
     }
     renderInventoryList();
+    renderHome();
   }, (error) => {
     console.error('Firebase Fehler:', error);
     inventoryList.innerHTML = '<p class="empty-msg">Verbindung zur Datenbank fehlgeschlagen. Prüfe die Firebase-Regeln.</p>';

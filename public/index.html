@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Schul Kiosk</title>
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -42,7 +42,11 @@
         <button id="close-drawer-btn" class="close-btn">&times;</button>
       </div>
       <nav class="drawer-nav">
-        <a href="#" id="menu-inventory-link" class="nav-item active">
+        <a href="#" id="menu-home-link" class="nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9v11h14V9"/><path d="M10 20v-6h4v6"/></svg>
+          <span>Home</span>
+        </a>
+        <a href="#" id="menu-inventory-link" class="nav-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
           <span>Inventar</span>
         </a>
@@ -51,6 +55,25 @@
 
     <!-- Main Content Area -->
     <main class="main-content">
+      <!-- Ansicht: Home -->
+      <section id="view-home" class="view home-view">
+        <div class="content-header">
+          <div>
+            <h2>Produkte</h2>
+            <p class="home-subtitle" id="home-subtitle">Anteile nach Stückzahl</p>
+          </div>
+        </div>
+        <div class="chart-card" id="chart-card">
+          <div class="chart-wrap">
+            <svg id="pie-chart" class="pie-chart" viewBox="0 0 200 200" role="img" aria-label="Kuchendiagramm der Produkte"></svg>
+            <div id="pie-tooltip" class="pie-tooltip" role="tooltip"></div>
+          </div>
+          <ul id="pie-legend" class="pie-legend"></ul>
+        </div>
+      </section>
+
+      <!-- Ansicht: Inventur -->
+      <section id="view-inventory" class="view hidden">
       <div class="content-header">
         <div>
           <h2>Inventur</h2>
@@ -85,6 +108,7 @@
         </section>
         <div id="scroll-sentinel" class="sentinel"></div>
       </div>
+      </section>
     </main>
   </div>
 
@@ -266,6 +290,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
