@@ -99,8 +99,97 @@ document.addEventListener('DOMContentLoaded', () => {
   setupCreateModal();
   setupDetailModal();
   setupInfiniteScroll();
-  listenToFirebase();
+  setupLock();
+  // Erst beim Server nachfragen, ob man eingeloggt ist – dann Daten laden
+  checkAuth().then((ok) => {
+    if (ok) unlockApp();
+    else showLock();
+  });
 });
+
+// ---------- Passwort-Sperre (Server prüft das Passwort) ----------
+let appStarted = false;
+
+async function checkAuth() {
+  try {
+    const res = await fetch('/api/check', { cache: 'no-store', credentials: 'same-origin' });
+    return res.ok;
+  } catch (err) {
+    console.error('Server nicht erreichbar:', err);
+    return false;
+  }
+}
+
+// Vor jeder Aktion: Server fragen, ob das Passwort eingegeben wurde
+async function requireAuth() {
+  const ok = await checkAuth();
+  if (!ok) showLock('Bitte Passwort erneut eingeben');
+  return ok;
+}
+
+function showLock(message) {
+  document.querySelectorAll('.modal.open').forEach(m => m.classList.remove('open'));
+  document.body.classList.remove('modal-open');
+  document.getElementById('lock-text').textContent = message || 'Bitte Passwort eingeben';
+  document.getElementById('lock-error').textContent = '';
+  document.getElementById('lock-screen').classList.remove('hidden');
+  const input = document.getElementById('lock-input');
+  input.value = '';
+  setTimeout(() => input.focus(), 100);
+}
+
+function unlockApp() {
+  document.getElementById('lock-screen').classList.add('hidden');
+  if (!appStarted) {
+    appStarted = true;
+    listenToFirebase();
+  }
+}
+
+function setupLock() {
+  const form = document.getElementById('lock-form');
+  const input = document.getElementById('lock-input');
+  const btn = document.getElementById('lock-btn');
+  const error = document.getElementById('lock-error');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!input.value) { input.focus(); return; }
+    btn.disabled = true;
+    btn.textContent = 'Prüfe...';
+    error.textContent = '';
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ password: input.value })
+      });
+      if (res.ok) {
+        input.value = '';
+        input.blur();
+        unlockApp();
+      } else {
+        error.textContent = res.status === 401 ? 'Falsches Passwort' : 'Fehler beim Server';
+        form.classList.remove('shake');
+        void form.offsetWidth;
+        form.classList.add('shake');
+        input.select();
+      }
+    } catch (err) {
+      error.textContent = 'Server nicht erreichbar';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Entsperren';
+    }
+  });
+
+  document.getElementById('menu-logout-link').addEventListener('click', async (e) => {
+    e.preventDefault();
+    try { await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' }); } catch (err) {}
+    location.reload();
+  });
+}
 
 // Drawer Controls
 function setupDrawer() {
@@ -448,7 +537,7 @@ function renderInventoryList() {
     // Klick auf Karte öffnet Details (aber nicht wenn Menü-Button geklickt)
     card.addEventListener('click', (e) => {
       if (e.target.closest('.card-menu-wrapper')) return;
-      openDetail(inv.firebaseKey);
+      requireAuth().then((ok) => { if (ok) openDetail(inv.firebaseKey); });
     });
 
     // 3-Punkte-Menü Toggle
@@ -468,21 +557,21 @@ function renderInventoryList() {
     card.querySelector('[data-action="download-excel"]').addEventListener('click', (e) => {
       e.stopPropagation();
       dropdown.classList.remove('open');
-      downloadInventoryExcel(inv);
+      requireAuth().then((ok) => { if (ok) downloadInventoryExcel(inv); });
     });
 
     // Download PDF
     card.querySelector('[data-action="download-pdf"]').addEventListener('click', (e) => {
       e.stopPropagation();
       dropdown.classList.remove('open');
-      downloadInventoryPDF(inv);
+      requireAuth().then((ok) => { if (ok) downloadInventoryPDF(inv); });
     });
 
     // Duplizieren
     card.querySelector('[data-action="duplicate"]').addEventListener('click', (e) => {
       e.stopPropagation();
       dropdown.classList.remove('open');
-      duplicateInventory(inv);
+      requireAuth().then((ok) => { if (ok) duplicateInventory(inv); });
     });
 
     inventoryList.appendChild(card);
@@ -779,7 +868,8 @@ function setupInfiniteScroll() {
 // Create Modal Logic (Schritt 1: Name -> Schritt 2: Produkte)
 function setupCreateModal() {
   // Öffne Schritt 1: Name
-  openCreateBtn.addEventListener('click', () => {
+  openCreateBtn.addEventListener('click', async () => {
+    if (!(await requireAuth())) return;
     inventoryNameInput.value = '';
     openModal(nameModal);
     setTimeout(() => inventoryNameInput.focus(), 150);
@@ -847,11 +937,16 @@ function setupCreateModal() {
     }
   });
 
-  finishInventoryBtn.addEventListener('click', () => {
+  finishInventoryBtn.addEventListener('click', async () => {
     if (tempItems.length === 0) return;
 
     finishInventoryBtn.disabled = true;
     finishInventoryBtn.textContent = 'Wird gespeichert...';
+    if (!(await requireAuth())) {
+      finishInventoryBtn.disabled = false;
+      finishInventoryBtn.textContent = 'Fertigstellen';
+      return;
+    }
 
     const now = new Date().toISOString();
     const newInventory = {
@@ -935,7 +1030,8 @@ function setupDetailModal() {
     closeModal(detailModal);
   });
 
-  toggleEditBtn.addEventListener('click', () => {
+  toggleEditBtn.addEventListener('click', async () => {
+    if (!(await requireAuth())) return;
     isEditMode = !isEditMode;
     updateEditView();
   });
@@ -966,9 +1062,14 @@ function setupDetailModal() {
   });
 
   // Speichern
-  saveEditBtn.addEventListener('click', () => {
+  saveEditBtn.addEventListener('click', async () => {
     saveEditBtn.disabled = true;
     saveEditBtn.textContent = 'Speichern...';
+    if (!(await requireAuth())) {
+      saveEditBtn.disabled = false;
+      saveEditBtn.textContent = 'Änderungen speichern';
+      return;
+    }
 
     const updates = {
       items: [...currentEditingItems],
@@ -990,7 +1091,8 @@ function setupDetailModal() {
   });
 
   // Löschen Flow
-  deleteInventoryBtn.addEventListener('click', () => {
+  deleteInventoryBtn.addEventListener('click', async () => {
+    if (!(await requireAuth())) return;
     confirmDeleteInput.value = '';
     executeDeleteBtn.disabled = true;
     openModal(confirmDeleteModal);
@@ -1011,10 +1113,14 @@ function setupDetailModal() {
     executeDeleteBtn.disabled = val !== 'löschen';
   });
 
-  executeDeleteBtn.addEventListener('click', () => {
+  executeDeleteBtn.addEventListener('click', async () => {
     if (executeDeleteBtn.disabled) return;
     executeDeleteBtn.disabled = true;
     executeDeleteBtn.textContent = 'Wird gelöscht...';
+    if (!(await requireAuth())) {
+      executeDeleteBtn.textContent = 'Löschen';
+      return;
+    }
 
     // Nicht endgültig löschen: Inventur nach "deleted" verschieben (in einem Schritt),
     // damit sie in der Datenbank erhalten bleibt und nur von der Website verschwindet.
