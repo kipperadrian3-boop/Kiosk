@@ -1,13 +1,11 @@
 // Gemeinsame Passwort-Logik für die Server-Funktionen (Vercel).
 // Dateien mit "_" am Anfang werden von Vercel nicht als eigene Route veröffentlicht.
 //
-// Das Passwort steht hier NICHT im Klartext, nur als SHA-256-Prüfwert.
-// Wer ein anderes Passwort will: in Vercel unter Settings → Environment Variables
-// die Variable KIOSK_PASSWORD setzen – dann gilt diese statt des Standards.
+// Das Passwort steht NICHT im Code (das Repo ist öffentlich), sondern nur in Vercel:
+// Settings → Environment Variables → KIOSK_PASSWORD.
+// Ist die Variable nicht gesetzt, kann sich niemand anmelden.
 const crypto = require('crypto');
 
-const DEFAULT_PASSWORD_HASH = 'd582220938ba7b624b67194568cc1deb96d5d993c7238ac19ea3e685c899d9f4';
-const DEFAULT_SESSION_HASH = 'd6f9a8ee28675ce03e582edbee3754f0d03007cab3cc303e8c08bfdc7b90fdef';
 const COOKIE_NAME = 'kiosk_auth';
 // 400 Tage = das Maximum, das Browser erlauben. Bei jeder Nutzung wird das
 // Cookie erneuert (siehe check.js) – wer die Seite benutzt, bleibt also für immer angemeldet.
@@ -23,17 +21,24 @@ function safeEqual(a, b) {
   return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
 }
 
+function configuredPassword() {
+  return (process.env.KIOSK_PASSWORD || '').trim();
+}
+
+function isConfigured() {
+  return configuredPassword().length > 0;
+}
+
 function expectedPasswordHash() {
-  return process.env.KIOSK_PASSWORD ? sha256(process.env.KIOSK_PASSWORD) : DEFAULT_PASSWORD_HASH;
+  return sha256(configuredPassword());
 }
 
 function expectedSessionHash() {
-  return process.env.KIOSK_PASSWORD
-    ? sha256(sha256('kiosk-session-v1:' + process.env.KIOSK_PASSWORD))
-    : DEFAULT_SESSION_HASH;
+  return sha256(sha256('kiosk-session-v1:' + configuredPassword()));
 }
 
 function isPasswordCorrect(password) {
+  if (!isConfigured()) return false;
   return safeEqual(sha256(password), expectedPasswordHash());
 }
 
@@ -54,6 +59,7 @@ function readCookie(req, name) {
 // Gibt das gültige Login-Token zurück (oder null)
 function validToken(req) {
   const token = readCookie(req, COOKIE_NAME);
+  if (!isConfigured()) return null;
   return token && safeEqual(sha256(token), expectedSessionHash()) ? token : null;
 }
 
@@ -86,6 +92,7 @@ async function readJsonBody(req) {
 
 module.exports = {
   MAX_AGE_SECONDS,
+  isConfigured,
   isPasswordCorrect,
   sessionTokenFor,
   validToken,

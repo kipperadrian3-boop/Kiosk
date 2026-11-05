@@ -7,6 +7,10 @@ module.exports = async (req, res) => {
     return auth.sendJson(res, 405, { ok: false });
   }
 
+  if (!auth.isConfigured()) {
+    return auth.sendJson(res, 500, { ok: false, error: 'KIOSK_PASSWORD ist in Vercel nicht gesetzt' });
+  }
+
   const body = await auth.readJsonBody(req);
   const password = typeof body.password === 'string' ? body.password : '';
 
