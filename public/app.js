@@ -761,7 +761,18 @@ function setupDetailModal() {
     executeDeleteBtn.disabled = true;
     executeDeleteBtn.textContent = 'Wird gelöscht...';
 
-    inventoriesRef.child(currentViewingId).remove()
+    // Nicht endgültig löschen: Inventur nach "deleted" verschieben (in einem Schritt),
+    // damit sie in der Datenbank erhalten bleibt und nur von der Website verschwindet.
+    const key = currentViewingId;
+    inventoriesRef.child(key).once('value')
+      .then((snap) => {
+        const data = snap.val();
+        if (!data) throw new Error('Inventur nicht gefunden.');
+        return db.ref().update({
+          [`deleted/${key}`]: { ...data, deletedAt: new Date().toISOString() },
+          [`inventories/${key}`]: null
+        });
+      })
       .then(() => {
         executeDeleteBtn.textContent = 'Löschen';
         executeDeleteBtn.disabled = true;
