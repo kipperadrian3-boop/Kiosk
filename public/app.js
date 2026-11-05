@@ -155,40 +155,123 @@ function formatDate(isoString) {
   });
 }
 
+// ---------- UI-Hilfsfunktionen ----------
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+function formatShortDate(isoString) {
+  if (!isoString) return '–';
+  return new Date(isoString).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function formatEuro(val) {
+  return Number(val || 0).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+}
+
+// Summen einer Inventur: Produkte, Stückzahl, Warenwert EK/VK
+function calcTotals(items) {
+  const list = items || [];
+  let qty = 0, ek = 0, vk = 0, hasEk = false, hasVk = false;
+  list.forEach((it) => {
+    const q = Number(it.quantity) || 0;
+    qty += q;
+    if (it.ek !== null && it.ek !== undefined && !isNaN(it.ek)) { ek += q * Number(it.ek); hasEk = true; }
+    if (it.vk !== null && it.vk !== undefined && !isNaN(it.vk)) { vk += q * Number(it.vk); hasVk = true; }
+  });
+  return { products: list.length, qty, ek, vk, hasEk, hasVk };
+}
+
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `toast ${type === 'error' ? 'error' : ''}`;
+  toast.innerHTML = `<span class="toast-dot"></span><span>${escapeHtml(message)}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.add('out');
+    toast.addEventListener('animationend', () => toast.remove(), { once: true });
+  }, 2600);
+}
+
+function renderStats() {
+  const statCount = document.getElementById('stat-count');
+  const statLast = document.getElementById('stat-last');
+  const statLastHint = document.getElementById('stat-last-hint');
+  const statValue = document.getElementById('stat-value');
+  if (!statCount) return;
+
+  statCount.textContent = inventories.length;
+  const latest = inventories[0];
+  if (latest) {
+    const t = calcTotals(latest.items);
+    statLast.textContent = formatShortDate(latest.createdAt);
+    statLastHint.textContent = latest.name || '';
+    statValue.textContent = t.hasVk ? formatEuro(t.vk) : '–';
+  } else {
+    statLast.textContent = '–';
+    statLastHint.innerHTML = '&nbsp;';
+    statValue.textContent = '–';
+  }
+}
+
+const ICONS = {
+  clipboard: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>',
+  sheet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>',
+  file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/><path d="M12 18v-6M9 15l3 3 3-3"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>'
+};
+
 function renderInventoryList() {
   inventoryList.innerHTML = '';
-  inventoryCount.textContent = `${inventories.length} Einträge`;
+  inventoryCount.textContent = `${inventories.length} ${inventories.length === 1 ? 'Eintrag' : 'Einträge'}`;
+  renderStats();
 
   const slice = inventories.slice(0, displayedLimit);
 
   if (slice.length === 0) {
-    inventoryList.innerHTML = '';
+    inventoryList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">${ICONS.clipboard}</div>
+        <h3>Noch keine Inventuren</h3>
+        <p>Erstelle deine erste Inventur, um den Bestand zu erfassen.</p>
+        <button type="button" class="btn primary-btn" id="empty-create-btn">+ Inventur erstellen</button>
+      </div>`;
+    document.getElementById('empty-create-btn').addEventListener('click', () => openCreateBtn.click());
     return;
   }
 
   slice.forEach((inv) => {
     const card = document.createElement('div');
     card.className = 'inventory-card';
-    const items = inv.items || [];
-    const totalCount = items.reduce((sum, it) => sum + it.quantity, 0);
+    const totals = calcTotals(inv.items);
     const titleText = inv.name ? inv.name : `Inventur vom ${formatDate(inv.createdAt)}`;
 
     card.innerHTML = `
-      <div>
-        <div class="card-title">${titleText}</div>
+      <div class="card-icon">${ICONS.clipboard}</div>
+      <div class="card-main">
+        <div class="card-title">${escapeHtml(titleText)}</div>
         <div class="card-meta">
           <span>Erstellt: ${formatDate(inv.createdAt)}</span>
-          ${inv.updatedAt !== inv.createdAt ? `<span>Bearbeitet: ${formatDate(inv.updatedAt)}</span>` : ''}
+          ${inv.updatedAt !== inv.createdAt ? `<span class="dot">·</span><span>Bearbeitet: ${formatDate(inv.updatedAt)}</span>` : ''}
+          <span class="dot">·</span><span>${totals.products} ${totals.products === 1 ? 'Produkt' : 'Produkte'}</span>
         </div>
       </div>
       <div class="card-right-actions">
-        <div class="card-badge">${totalCount} Stk.</div>
+        <div class="card-figures">
+          <div class="card-badge">${totals.qty} Stk.</div>
+          ${totals.hasVk ? `<div class="card-value">${formatEuro(totals.vk)}</div>` : ''}
+        </div>
         <div class="card-menu-wrapper">
           <button class="card-menu-btn" aria-label="Menü" title="Menü">&#8942;</button>
           <div class="card-dropdown-menu">
-            <button class="card-dropdown-item" data-action="download-excel">Download Excel</button>
-            <button class="card-dropdown-item" data-action="download-pdf">Download PDF</button>
-            <button class="card-dropdown-item" data-action="duplicate">Duplizieren</button>
+            <button class="card-dropdown-item" data-action="download-excel">${ICONS.sheet}Download Excel</button>
+            <button class="card-dropdown-item" data-action="download-pdf">${ICONS.file}Download PDF</button>
+            <div class="dropdown-sep"></div>
+            <button class="card-dropdown-item" data-action="duplicate">${ICONS.copy}Duplizieren</button>
           </div>
         </div>
       </div>
@@ -247,9 +330,11 @@ function duplicateInventory(inv) {
     createdAt: now,
     updatedAt: now
   };
-  inventoriesRef.push(copy).catch((err) => {
-    alert('Fehler beim Duplizieren: ' + err.message);
-  });
+  inventoriesRef.push(copy)
+    .then(() => showToast('Inventur dupliziert'))
+    .catch((err) => {
+      showToast('Fehler beim Duplizieren: ' + err.message, 'error');
+    });
 }
 
 // Globaler Klick schließt alle offenen Dropdown-Menüs
@@ -612,6 +697,7 @@ function setupCreateModal() {
     inventoriesRef.push(newInventory)
       .then(() => {
         closeModal(createModal);
+        showToast('Inventur gespeichert');
         finishInventoryBtn.textContent = 'Fertigstellen';
         finishInventoryBtn.disabled = false;
         // Liste aktualisiert sich automatisch durch den Realtime Listener!
@@ -642,7 +728,7 @@ function renderTempItems() {
   tempItems.forEach((it, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${it.name}</td>
+      <td>${escapeHtml(it.name)}</td>
       <td class="text-right">${it.quantity}</td>
       <td class="text-right">${formatPrice(it.ek)}</td>
       <td class="text-right">${formatPrice(it.vk)}</td>
@@ -726,6 +812,7 @@ function setupDetailModal() {
         saveEditBtn.disabled = false;
         saveEditBtn.textContent = 'Änderungen speichern';
         closeModal(detailModal);
+        showToast('Änderungen gespeichert');
       })
       .catch((err) => {
         alert('Fehler: ' + err.message);
@@ -778,6 +865,7 @@ function setupDetailModal() {
         executeDeleteBtn.disabled = true;
         closeConfirmModal();
         closeModal(detailModal);
+        showToast('Inventur gelöscht');
       })
       .catch((err) => {
         alert('Fehler: ' + err.message);
@@ -801,7 +889,20 @@ function updateEditView() {
   renderDetailItems();
 }
 
+function renderDetailSummary() {
+  const el = document.getElementById('detail-summary');
+  if (!el) return;
+  const t = calcTotals(currentEditingItems);
+  const profit = t.vk - t.ek;
+  el.innerHTML = `
+    <div class="summary-chip"><div class="stat-label">Stück</div><div class="stat-value">${t.qty}</div></div>
+    <div class="summary-chip"><div class="stat-label">Wert (VK)</div><div class="stat-value">${t.hasVk ? formatEuro(t.vk) : '–'}</div></div>
+    <div class="summary-chip ${t.hasEk && t.hasVk && profit > 0 ? 'positive' : ''}"><div class="stat-label">Gewinn</div><div class="stat-value">${t.hasEk && t.hasVk ? formatEuro(profit) : '–'}</div></div>
+  `;
+}
+
 function renderDetailItems() {
+  renderDetailSummary();
   detailItemsTbody.innerHTML = '';
   const editHeaders = document.querySelectorAll('.edit-col');
   editHeaders.forEach(el => el.classList.toggle('hidden', !isEditMode));
@@ -809,7 +910,7 @@ function renderDetailItems() {
   currentEditingItems.forEach((it, idx) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${it.name}</td>
+      <td>${escapeHtml(it.name)}</td>
       <td class="text-right">${it.quantity}</td>
       <td class="text-right">${formatPrice(it.ek)}</td>
       <td class="text-right">${formatPrice(it.vk)}</td>
