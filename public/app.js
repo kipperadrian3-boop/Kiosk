@@ -188,6 +188,7 @@ function renderInventoryList() {
           <div class="card-dropdown-menu">
             <button class="card-dropdown-item" data-action="download-excel">Download Excel</button>
             <button class="card-dropdown-item" data-action="download-pdf">Download PDF</button>
+            <button class="card-dropdown-item" data-action="duplicate">Duplizieren</button>
           </div>
         </div>
       </div>
@@ -226,7 +227,28 @@ function renderInventoryList() {
       downloadInventoryPDF(inv);
     });
 
+    // Duplizieren
+    card.querySelector('[data-action="duplicate"]').addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.remove('open');
+      duplicateInventory(inv);
+    });
+
     inventoryList.appendChild(card);
+  });
+}
+
+// Inventur duplizieren: gleicher Inhalt, aber Erstellt-Datum = jetzt
+function duplicateInventory(inv) {
+  const now = new Date().toISOString();
+  const { firebaseKey, ...data } = inv;
+  const copy = {
+    ...JSON.parse(JSON.stringify(data)),
+    createdAt: now,
+    updatedAt: now
+  };
+  inventoriesRef.push(copy).catch((err) => {
+    alert('Fehler beim Duplizieren: ' + err.message);
   });
 }
 
