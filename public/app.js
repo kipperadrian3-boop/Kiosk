@@ -237,7 +237,6 @@ function renderInventoryList() {
       <div class="empty-state">
         <div class="empty-icon">${ICONS.clipboard}</div>
         <h3>Noch keine Inventuren</h3>
-        <p>Erstelle deine erste Inventur, um den Bestand zu erfassen.</p>
         <button type="button" class="btn primary-btn" id="empty-create-btn">+ Inventur erstellen</button>
       </div>`;
     document.getElementById('empty-create-btn').addEventListener('click', () => openCreateBtn.click());

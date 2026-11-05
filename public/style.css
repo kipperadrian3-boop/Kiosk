@@ -608,7 +608,7 @@ input:focus-visible {
 .empty-state h3 {
   color: var(--text-main);
   font-size: 1.05rem;
-  margin-bottom: 0.35rem;
+  margin-bottom: 1.25rem;
 }
 
 .empty-state p {
