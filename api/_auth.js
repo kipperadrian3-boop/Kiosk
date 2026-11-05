@@ -9,7 +9,9 @@ const crypto = require('crypto');
 const DEFAULT_PASSWORD_HASH = 'd582220938ba7b624b67194568cc1deb96d5d993c7238ac19ea3e685c899d9f4';
 const DEFAULT_SESSION_HASH = 'd6f9a8ee28675ce03e582edbee3754f0d03007cab3cc303e8c08bfdc7b90fdef';
 const COOKIE_NAME = 'kiosk_auth';
-const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 Tage eingeloggt bleiben
+// 400 Tage = das Maximum, das Browser erlauben. Bei jeder Nutzung wird das
+// Cookie erneuert (siehe check.js) – wer die Seite benutzt, bleibt also für immer angemeldet.
+const MAX_AGE_SECONDS = 60 * 60 * 24 * 400;
 
 function sha256(text) {
   return crypto.createHash('sha256').update(String(text)).digest('hex');
@@ -49,9 +51,14 @@ function readCookie(req, name) {
   return null;
 }
 
-function isAuthenticated(req) {
+// Gibt das gültige Login-Token zurück (oder null)
+function validToken(req) {
   const token = readCookie(req, COOKIE_NAME);
-  return !!token && safeEqual(sha256(token), expectedSessionHash());
+  return token && safeEqual(sha256(token), expectedSessionHash()) ? token : null;
+}
+
+function isAuthenticated(req) {
+  return !!validToken(req);
 }
 
 function cookieHeader(value, maxAge) {
@@ -81,6 +88,7 @@ module.exports = {
   MAX_AGE_SECONDS,
   isPasswordCorrect,
   sessionTokenFor,
+  validToken,
   isAuthenticated,
   cookieHeader,
   sendJson,
