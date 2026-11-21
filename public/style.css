@@ -1,4 +1,5 @@
 :root {
+  color-scheme: dark;
   --bg-color: #0b0f14;
   --surface: #11161d;
   --card-bg: #151b23;
@@ -246,7 +247,10 @@ input:focus-visible {
 
 .overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
@@ -643,7 +647,10 @@ body.modal-open {
 /* ---------- Modals ---------- */
 .modal {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
@@ -1213,10 +1220,23 @@ input:focus {
   }
 }
 
+/* Autofill der Browser soll Felder nicht weiß färben */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 100px var(--bg-color) inset !important;
+  -webkit-text-fill-color: var(--text-main) !important;
+  caret-color: var(--text-main);
+  transition: background-color 9999s ease-out 0s;
+}
+
 /* ---------- Passwort-Sperre ---------- */
 .lock-screen {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 1000;
   display: flex;
   align-items: center;

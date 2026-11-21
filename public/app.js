@@ -415,7 +415,7 @@ function formatDate(isoString) {
 
 // ---------- UI-Hilfsfunktionen ----------
 function escapeHtml(str) {
-  return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+  return String(str === null || str === undefined ? '' : str).replace(/[&<>"']/g, (c) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
   }[c]));
 }
