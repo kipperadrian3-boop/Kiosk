@@ -1689,6 +1689,76 @@ input:-webkit-autofill:focus {
   }
 }
 
+/* Wochen hinzufügen / löschen */
+.week-add {
+  min-width: 76px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 6px;
+  border-style: dashed;
+  border-color: var(--border-strong);
+  color: var(--accent-text);
+  background: transparent;
+}
+
+.week-add:hover {
+  border-color: var(--accent-color);
+  background: var(--accent-soft);
+}
+
+.week-add-plus {
+  font-size: 1.4rem;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.week-add-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.orders-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem 0.6rem 1rem;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--surface);
+}
+
+.orders-week-label {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.btn-sm {
+  min-height: 34px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.82rem;
+}
+
+.date-preview {
+  min-height: 2.6em;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.date-preview.ok strong {
+  color: var(--accent-text);
+}
+
+.date-preview.error {
+  color: var(--danger-color);
+}
+
+#orders-card.hidden,
+#orders-empty.hidden {
+  display: none !important;
+}
+
 /* ---------- Toast-Meldungen ---------- */
 .toast-container {
   position: fixed;

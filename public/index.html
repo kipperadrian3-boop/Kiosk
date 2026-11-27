@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0b0f14">
   <title>Schul Kiosk</title>
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -111,7 +111,16 @@
 
         <div class="week-timeline" id="week-timeline" role="tablist" aria-label="Wochen"></div>
 
-        <div class="orders-card">
+        <div class="empty-state hidden" id="orders-empty">
+          <h3>Noch keine Woche</h3>
+          <button type="button" class="btn primary-btn" id="orders-empty-add">+ Woche hinzufügen</button>
+        </div>
+
+        <div class="orders-card hidden" id="orders-card">
+          <div class="orders-toolbar">
+            <span class="orders-week-label" id="orders-week-label"></span>
+            <button type="button" class="btn danger-ghost btn-sm" id="delete-week-btn">Woche löschen</button>
+          </div>
           <div class="orders-table-wrap" id="orders-table-wrap">
             <table class="orders-table" id="orders-table"></table>
           </div>
@@ -313,6 +322,44 @@
     </div>
   </div>
 
+  <!-- Modal: Woche hinzufügen -->
+  <div id="add-week-modal" class="modal">
+    <form class="modal-content confirm-modal-content" id="add-week-form" autocomplete="off">
+      <div class="modal-header">
+        <h3>Woche hinzufügen</h3>
+        <button type="button" id="close-add-week-modal" class="close-btn" aria-label="Schließen">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="input-group">
+          <label for="add-week-input">Datum (irgendein Tag der Woche)</label>
+          <input type="text" id="add-week-input" placeholder="z. B. 27.11.26" inputmode="text" enterkeyhint="done">
+        </div>
+        <p class="date-preview" id="add-week-preview" aria-live="polite"></p>
+      </div>
+      <div class="modal-footer flex-row">
+        <button type="button" id="add-week-cancel" class="btn secondary-btn">Abbrechen</button>
+        <button type="submit" id="add-week-confirm" class="btn primary-btn" disabled>Hinzufügen</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Modal: Woche löschen -->
+  <div id="delete-week-modal" class="modal">
+    <div class="modal-content confirm-modal-content">
+      <div class="modal-header">
+        <h3 class="danger-title">Woche löschen?</h3>
+        <button type="button" id="close-delete-week-modal" class="close-btn" aria-label="Schließen">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="confirm-text" id="delete-week-text"></p>
+      </div>
+      <div class="modal-footer flex-row">
+        <button type="button" id="delete-week-cancel" class="btn secondary-btn">Abbrechen</button>
+        <button type="button" id="delete-week-confirm" class="btn danger-btn">Löschen</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Löschen Bestätigung -->
   <div id="confirm-delete-modal" class="modal">
     <div class="modal-content confirm-modal-content">
@@ -337,6 +384,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

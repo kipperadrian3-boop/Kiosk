@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupDetailModal();
   setupInfiniteScroll();
   setupLock();
+  setupOrdersUi();
   // Erst beim Server nachfragen, ob man eingeloggt ist – dann Daten laden
   checkAuth().then((ok) => {
     if (ok) unlockApp();
@@ -252,7 +253,6 @@ const ORDER_COLUMNS = [
   { key: 'name', label: 'Name', short: 'Name', wide: true },
   { key: 'klasse', label: 'Klasse', short: 'Klasse' }
 ];
-const ORDER_WEEKS_BACK = 26; // so viele Wochen zurück sind immer in der Zeitleiste
 let ordersData = {};          // { '2026-11-23': { gouda: { mo: '2', name: 'Max' } } }
 let selectedOrderWeek = null; // Montag der gewählten Woche als 'YYYY-MM-DD'
 let ordersTimelineScrolled = false;
@@ -287,10 +287,18 @@ function isoWeekNumber(d) {
   return Math.ceil(((t - yearStart) / 86400000 + 1) / 7);
 }
 
+// Hat die Woche schon Einträge? (nur Brötchen-Zeilen zählen, nicht interne Felder)
 function weekHasData(key) {
   const week = ordersData[key];
   if (!week) return false;
-  return Object.values(week).some(row => row && Object.values(row).some(v => String(v || '').trim() !== ''));
+  return ORDER_ROLLS.some((r) => {
+    const row = week[r.key];
+    return row && typeof row === 'object' && Object.values(row).some(v => String(v || '').trim() !== '');
+  });
+}
+
+function orderWeekKeys() {
+  return Object.keys(ordersData).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
 }
 
 function listenToOrders() {
@@ -308,27 +316,16 @@ function setOrdersStatus(text, isError) {
   if (!el) return;
   el.textContent = text;
   el.classList.toggle('error', !!isError);
-  el.classList.toggle('hidden', !text);
 }
 
-// Wochen-Zeitleiste: links alt, rechts die aktuelle Woche
+// Zeitleiste: nur angelegte Wochen (links alt, rechts neu) + Plus-Knopf
 function renderWeekTimeline() {
   const el = document.getElementById('week-timeline');
-  const currentMonday = mondayOf(new Date());
-  const currentKey = weekKey(currentMonday);
-
-  let first = new Date(currentMonday);
-  first.setDate(first.getDate() - ORDER_WEEKS_BACK * 7);
-  Object.keys(ordersData).forEach((k) => {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) {
-      const d = weekKeyToDate(k);
-      if (d < first) first = d;
-    }
-  });
-
+  const currentKey = weekKey(mondayOf(new Date()));
   el.innerHTML = '';
-  for (let d = new Date(first); d <= currentMonday; d.setDate(d.getDate() + 7)) {
-    const key = weekKey(d);
+
+  orderWeekKeys().forEach((key) => {
+    const d = weekKeyToDate(key);
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'week-chip';
@@ -346,7 +343,16 @@ function renderWeekTimeline() {
       renderOrders(false);
     });
     el.appendChild(btn);
-  }
+  });
+
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'week-chip week-add';
+  add.setAttribute('aria-label', 'Woche hinzufügen');
+  add.title = 'Woche hinzufügen';
+  add.innerHTML = '<span class="week-add-plus">+</span><span class="week-add-text">Woche</span>';
+  add.addEventListener('click', openAddWeekModal);
+  el.appendChild(add);
 }
 
 function renderOrderTable() {
@@ -388,25 +394,209 @@ function renderOrderTable() {
 
 function renderOrders(scrollToSelected) {
   if (!document.getElementById('week-timeline')) return;
-  if (!selectedOrderWeek) selectedOrderWeek = weekKey(mondayOf(new Date()));
+  const keys = orderWeekKeys();
+
+  // Gewählte Woche gibt es nicht (mehr)? -> neueste Woche nehmen
+  if (!selectedOrderWeek || !ordersData[selectedOrderWeek]) {
+    selectedOrderWeek = keys.length ? keys[keys.length - 1] : null;
+    scrollToSelected = true;
+  }
 
   renderWeekTimeline();
+
+  const card = document.getElementById('orders-card');
+  const empty = document.getElementById('orders-empty');
+  const subtitle = document.getElementById('orders-subtitle');
+
+  if (!selectedOrderWeek) {
+    card.classList.add('hidden');
+    empty.classList.remove('hidden');
+    subtitle.textContent = 'Noch keine Woche angelegt';
+    document.getElementById('orders-table').dataset.week = '';
+    return;
+  }
+
+  card.classList.remove('hidden');
+  empty.classList.add('hidden');
   renderOrderTable();
 
   const monday = weekKeyToDate(selectedOrderWeek);
   const thursday = new Date(monday);
   thursday.setDate(thursday.getDate() + 3);
-  document.getElementById('orders-subtitle').textContent =
-    `KW ${isoWeekNumber(monday)} · ${formatDay(monday)} – ${formatDay(thursday)}`;
+  subtitle.textContent = `KW ${isoWeekNumber(monday)} · ${formatDay(monday)} – ${formatDay(thursday)}`;
+  document.getElementById('orders-week-label').textContent = `Woche vom ${formatDay(monday)}`;
 
   const timeline = document.getElementById('week-timeline');
   if (scrollToSelected || !ordersTimelineScrolled) {
     const active = timeline.querySelector('.week-chip.active');
     if (active && timeline.offsetParent !== null) {
-      timeline.scrollLeft = active.offsetLeft - timeline.clientWidth + active.offsetWidth + 8;
+      // so scrollen, dass die gewählte Woche und der Plus-Knopf sichtbar sind
+      timeline.scrollLeft = timeline.scrollWidth;
+      if (active.offsetLeft < timeline.scrollLeft) timeline.scrollLeft = active.offsetLeft - 8;
       ordersTimelineScrolled = true;
     }
   }
+}
+
+// ---------- Datum flexibel einlesen ----------
+// Erlaubt z. B. 27.11.26 · 22.11.2026 · 22 11 2026 · 11 11 26 · 20,11,2026 · 20/11/26 · 27-11 · 271126 · 27112026
+function parseFlexibleDate(text) {
+  const raw = String(text || '').trim();
+  if (!raw) return null;
+  let parts = raw.split(/[^0-9]+/).filter(Boolean);
+
+  // Ohne Trennzeichen: 271126 / 27112026 / 2711
+  if (parts.length === 1) {
+    const t = parts[0];
+    if (t.length === 8) parts = [t.slice(0, 2), t.slice(2, 4), t.slice(4)];
+    else if (t.length === 6) parts = [t.slice(0, 2), t.slice(2, 4), t.slice(4)];
+    else if (t.length === 4) parts = [t.slice(0, 2), t.slice(2, 4)];
+    else return null;
+  }
+  if (parts.length < 2 || parts.length > 3) return null;
+
+  const day = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10);
+  let year;
+  if (parts.length === 2) {
+    year = new Date().getFullYear();
+  } else if (parts[2].length === 2) {
+    year = 2000 + parseInt(parts[2], 10);
+  } else if (parts[2].length === 4) {
+    year = parseInt(parts[2], 10);
+  } else {
+    return null;
+  }
+
+  if (year < 2000 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const d = new Date(year, month - 1, day);
+  // 31.02. o. ä. abfangen
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return d;
+}
+
+const WEEKDAY_NAMES = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+
+function updateAddWeekPreview() {
+  const input = document.getElementById('add-week-input');
+  const preview = document.getElementById('add-week-preview');
+  const btn = document.getElementById('add-week-confirm');
+  const d = parseFlexibleDate(input.value);
+
+  preview.classList.remove('ok', 'error');
+  if (!input.value.trim()) {
+    preview.textContent = 'z. B. 27.11.26 · 22 11 2026 · 20,11,26';
+    btn.disabled = true;
+    return;
+  }
+  if (!d) {
+    preview.textContent = 'Datum nicht erkannt';
+    preview.classList.add('error');
+    btn.disabled = true;
+    return;
+  }
+  const monday = mondayOf(d);
+  const key = weekKey(monday);
+  const exists = !!ordersData[key];
+  preview.innerHTML = `${WEEKDAY_NAMES[d.getDay()]}, ${formatDay(d)} → Woche vom <strong>Montag ${formatDay(monday)}</strong> (KW ${isoWeekNumber(monday)})${exists ? '<br>Diese Woche gibt es schon – sie wird geöffnet.' : ''}`;
+  preview.classList.add('ok');
+  btn.disabled = false;
+  btn.textContent = exists ? 'Öffnen' : 'Hinzufügen';
+}
+
+async function openAddWeekModal() {
+  if (!(await requireAuth())) return;
+  const modal = document.getElementById('add-week-modal');
+  const input = document.getElementById('add-week-input');
+  input.value = '';
+  updateAddWeekPreview();
+  openModal(modal);
+  setTimeout(() => input.focus(), 150);
+}
+
+async function confirmAddWeek() {
+  const input = document.getElementById('add-week-input');
+  const btn = document.getElementById('add-week-confirm');
+  const d = parseFlexibleDate(input.value);
+  if (!d) return;
+  const key = weekKey(mondayOf(d));
+
+  if (ordersData[key]) {
+    flushOrderSaves();
+    selectedOrderWeek = key;
+    closeModal(document.getElementById('add-week-modal'));
+    renderOrders(true);
+    return;
+  }
+
+  btn.disabled = true;
+  if (!(await requireAuth())) { btn.disabled = false; return; }
+  try {
+    flushOrderSaves();
+    await db.ref('orders/' + key).set({ _createdAt: new Date().toISOString() });
+    selectedOrderWeek = key;
+    closeModal(document.getElementById('add-week-modal'));
+    renderOrders(true);
+    showToast(`Woche vom ${formatDay(weekKeyToDate(key))} angelegt`);
+  } catch (err) {
+    console.error(err);
+    showToast('Woche konnte nicht angelegt werden', 'error');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ---------- Woche löschen: nach "deleted_orders" verschieben, nicht endgültig ----------
+async function openDeleteWeekModal() {
+  if (!selectedOrderWeek) return;
+  if (!(await requireAuth())) return;
+  document.getElementById('delete-week-text').textContent =
+    `Die Woche vom ${formatDay(weekKeyToDate(selectedOrderWeek))} verschwindet von der Website. In der Datenbank bleibt sie unter „deleted_orders“ gespeichert.`;
+  openModal(document.getElementById('delete-week-modal'));
+}
+
+async function confirmDeleteWeek() {
+  const key = selectedOrderWeek;
+  const btn = document.getElementById('delete-week-confirm');
+  if (!key) return;
+  btn.disabled = true;
+  btn.textContent = 'Wird gelöscht...';
+  try {
+    if (!(await requireAuth())) return;
+    await flushOrderSaves();
+    const snap = await db.ref('orders/' + key).once('value');
+    const data = snap.val() || {};
+    const archiveKey = db.ref('deleted_orders').push().key;
+    await db.ref().update({
+      ['deleted_orders/' + archiveKey]: { week: key, deletedAt: new Date().toISOString(), data },
+      ['orders/' + key]: null
+    });
+    closeModal(document.getElementById('delete-week-modal'));
+    selectedOrderWeek = null;
+    showToast('Woche gelöscht');
+  } catch (err) {
+    console.error(err);
+    showToast('Woche konnte nicht gelöscht werden', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Löschen';
+  }
+}
+
+function setupOrdersUi() {
+  document.getElementById('add-week-input').addEventListener('input', updateAddWeekPreview);
+  document.getElementById('add-week-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    confirmAddWeek();
+  });
+  document.getElementById('add-week-cancel').addEventListener('click', () => closeModal(document.getElementById('add-week-modal')));
+  document.getElementById('close-add-week-modal').addEventListener('click', () => closeModal(document.getElementById('add-week-modal')));
+  document.getElementById('orders-empty-add').addEventListener('click', openAddWeekModal);
+
+  document.getElementById('delete-week-btn').addEventListener('click', openDeleteWeekModal);
+  document.getElementById('delete-week-confirm').addEventListener('click', confirmDeleteWeek);
+  document.getElementById('delete-week-cancel').addEventListener('click', () => closeModal(document.getElementById('delete-week-modal')));
+  document.getElementById('close-delete-week-modal').addEventListener('click', () => closeModal(document.getElementById('delete-week-modal')));
 }
 
 // Speichern: kurz nach dem Tippen (oder beim Verlassen des Feldes) in Firebase
