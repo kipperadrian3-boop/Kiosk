@@ -143,6 +143,7 @@ function unlockApp() {
   if (!appStarted) {
     appStarted = true;
     listenToFirebase();
+    listenToOrders();
   }
 }
 
@@ -214,14 +215,233 @@ function setupDrawer() {
     showView('home');
     closeDrawer();
   });
+  document.getElementById('menu-orders-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    showView('orders');
+    closeDrawer();
+  });
 }
 
 // Zwischen Home und Inventar wechseln
 function showView(name) {
-  document.getElementById('view-home').classList.toggle('hidden', name !== 'home');
-  document.getElementById('view-inventory').classList.toggle('hidden', name !== 'inventory');
+  ['home', 'inventory', 'orders'].forEach((v) => {
+    document.getElementById('view-' + v).classList.toggle('hidden', name !== v);
+  });
   document.getElementById('menu-home-link').classList.toggle('active', name === 'home');
   menuInventoryLink.classList.toggle('active', name === 'inventory');
+  document.getElementById('menu-orders-link').classList.toggle('active', name === 'orders');
+  if (name === 'orders') renderOrders(true);
+}
+
+// ---------- Bestellungen (Brötchen pro Woche) ----------
+// Brötchen und Spalten sind fest – nur die Felder darin sind änderbar.
+const ORDER_ROLLS = [
+  { key: 'gouda', label: 'Gouda' },
+  { key: 'salami', label: 'Salami' },
+  { key: 'kochschinken', label: 'Kochschinken' },
+  { key: 'tomate_mozzarella', label: 'Tomate Mozzarella' },
+  { key: 'ei', label: 'Ei' },
+  { key: 'chicken', label: 'Chicken' },
+  { key: 'haehnchenbrust', label: 'Hähnchenbrust' }
+];
+const ORDER_COLUMNS = [
+  { key: 'mo', label: 'Montag', short: 'Mo' },
+  { key: 'di', label: 'Dienstag', short: 'Di' },
+  { key: 'mi', label: 'Mittwoch', short: 'Mi' },
+  { key: 'do', label: 'Donnerstag', short: 'Do' },
+  { key: 'name', label: 'Name', short: 'Name', wide: true },
+  { key: 'klasse', label: 'Klasse', short: 'Klasse' }
+];
+const ORDER_WEEKS_BACK = 26; // so viele Wochen zurück sind immer in der Zeitleiste
+let ordersData = {};          // { '2026-11-23': { gouda: { mo: '2', name: 'Max' } } }
+let selectedOrderWeek = null; // Montag der gewählten Woche als 'YYYY-MM-DD'
+let ordersTimelineScrolled = false;
+const pendingOrderSaves = new Map();
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+
+function mondayOf(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+function weekKey(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function weekKeyToDate(key) {
+  const [y, m, d] = key.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDay(d) {
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+function isoWeekNumber(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - yearStart) / 86400000 + 1) / 7);
+}
+
+function weekHasData(key) {
+  const week = ordersData[key];
+  if (!week) return false;
+  return Object.values(week).some(row => row && Object.values(row).some(v => String(v || '').trim() !== ''));
+}
+
+function listenToOrders() {
+  db.ref('orders').on('value', (snap) => {
+    ordersData = snap.val() || {};
+    renderOrders(false);
+  }, (err) => {
+    console.error('Bestellungen konnten nicht geladen werden:', err);
+    setOrdersStatus('Fehler beim Laden', true);
+  });
+}
+
+function setOrdersStatus(text, isError) {
+  const el = document.getElementById('orders-save-status');
+  if (!el) return;
+  el.textContent = text;
+  el.classList.toggle('error', !!isError);
+  el.classList.toggle('hidden', !text);
+}
+
+// Wochen-Zeitleiste: links alt, rechts die aktuelle Woche
+function renderWeekTimeline() {
+  const el = document.getElementById('week-timeline');
+  const currentMonday = mondayOf(new Date());
+  const currentKey = weekKey(currentMonday);
+
+  let first = new Date(currentMonday);
+  first.setDate(first.getDate() - ORDER_WEEKS_BACK * 7);
+  Object.keys(ordersData).forEach((k) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(k)) {
+      const d = weekKeyToDate(k);
+      if (d < first) first = d;
+    }
+  });
+
+  el.innerHTML = '';
+  for (let d = new Date(first); d <= currentMonday; d.setDate(d.getDate() + 7)) {
+    const key = weekKey(d);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'week-chip';
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-selected', key === selectedOrderWeek ? 'true' : 'false');
+    if (key === selectedOrderWeek) btn.classList.add('active');
+    if (weekHasData(key)) btn.classList.add('has-data');
+    btn.innerHTML = `
+      <span class="week-kw">${key === currentKey ? 'Diese Woche' : 'KW ' + isoWeekNumber(d)}</span>
+      <span class="week-date">${formatDay(d)}</span>
+      <span class="week-dot" aria-hidden="true"></span>`;
+    btn.addEventListener('click', () => {
+      flushOrderSaves();
+      selectedOrderWeek = key;
+      renderOrders(false);
+    });
+    el.appendChild(btn);
+  }
+}
+
+function renderOrderTable() {
+  const table = document.getElementById('orders-table');
+  const weekData = ordersData[selectedOrderWeek] || {};
+
+  // Tabelle nur einmal pro Woche neu aufbauen – sonst nur Werte aktualisieren (Fokus bleibt erhalten)
+  if (table.dataset.week !== selectedOrderWeek) {
+    table.dataset.week = selectedOrderWeek;
+    let html = '<thead><tr><th class="roll-col" scope="col"><span class="sr-only">Brötchen</span></th>';
+    ORDER_COLUMNS.forEach((c) => {
+      html += `<th scope="col" class="${c.wide ? 'col-wide' : ''}${c.key === 'name' ? ' col-sep' : ''}"><span class="col-full">${c.label}</span><span class="col-short">${c.short}</span></th>`;
+    });
+    html += '</tr></thead><tbody>';
+    ORDER_ROLLS.forEach((r) => {
+      html += `<tr><th scope="row" class="roll-col">${r.label}</th>`;
+      ORDER_COLUMNS.forEach((c) => {
+        html += `<td class="${c.wide ? 'col-wide' : ''}${c.key === 'name' ? ' col-sep' : ''}"><input type="text" class="order-input" data-roll="${r.key}" data-col="${c.key}" aria-label="${r.label} – ${c.label}" autocomplete="off" maxlength="60"></td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody>';
+    table.innerHTML = html;
+    table.querySelectorAll('.order-input').forEach((input) => {
+      input.addEventListener('input', () => queueOrderSave(input));
+      input.addEventListener('blur', () => flushOrderSaves());
+    });
+  }
+
+  table.querySelectorAll('.order-input').forEach((input) => {
+    if (document.activeElement === input) return; // gerade am Tippen: nicht überschreiben
+    const saveKey = `${selectedOrderWeek}/${input.dataset.roll}/${input.dataset.col}`;
+    if (pendingOrderSaves.has(saveKey)) return;
+    const row = weekData[input.dataset.roll] || {};
+    const v = row[input.dataset.col];
+    input.value = v === undefined || v === null ? '' : v;
+  });
+}
+
+function renderOrders(scrollToSelected) {
+  if (!document.getElementById('week-timeline')) return;
+  if (!selectedOrderWeek) selectedOrderWeek = weekKey(mondayOf(new Date()));
+
+  renderWeekTimeline();
+  renderOrderTable();
+
+  const monday = weekKeyToDate(selectedOrderWeek);
+  const thursday = new Date(monday);
+  thursday.setDate(thursday.getDate() + 3);
+  document.getElementById('orders-subtitle').textContent =
+    `KW ${isoWeekNumber(monday)} · ${formatDay(monday)} – ${formatDay(thursday)}`;
+
+  const timeline = document.getElementById('week-timeline');
+  if (scrollToSelected || !ordersTimelineScrolled) {
+    const active = timeline.querySelector('.week-chip.active');
+    if (active && timeline.offsetParent !== null) {
+      timeline.scrollLeft = active.offsetLeft - timeline.clientWidth + active.offsetWidth + 8;
+      ordersTimelineScrolled = true;
+    }
+  }
+}
+
+// Speichern: kurz nach dem Tippen (oder beim Verlassen des Feldes) in Firebase
+function queueOrderSave(input) {
+  const key = `${selectedOrderWeek}/${input.dataset.roll}/${input.dataset.col}`;
+  const prev = pendingOrderSaves.get(key);
+  if (prev) clearTimeout(prev.timer);
+  const timer = setTimeout(() => flushOrderSaves(), 700);
+  pendingOrderSaves.set(key, { value: input.value, timer });
+  setOrdersStatus('Ungespeichert…');
+}
+
+async function flushOrderSaves() {
+  if (pendingOrderSaves.size === 0) return;
+  const updates = {};
+  pendingOrderSaves.forEach((entry, key) => {
+    clearTimeout(entry.timer);
+    const v = String(entry.value).trim();
+    updates['orders/' + key] = v === '' ? null : v;
+  });
+  pendingOrderSaves.clear();
+
+  setOrdersStatus('Speichert…');
+  if (!(await requireAuth())) {
+    setOrdersStatus('Nicht gespeichert', true);
+    return;
+  }
+  try {
+    await db.ref().update(updates);
+    setOrdersStatus('Gespeichert');
+  } catch (err) {
+    console.error(err);
+    setOrdersStatus('Fehler beim Speichern', true);
+    showToast('Bestellung konnte nicht gespeichert werden', 'error');
+  }
 }
 
 // ---------- Home: Kuchendiagramm der letzten Inventur ----------
@@ -975,7 +1195,8 @@ function setupCreateModal() {
 
 function formatPrice(val) {
   if (val === null || val === undefined || isNaN(val)) return '-';
-  return Number(val).toFixed(2) + ' €';
+  // Deutsch: 0,80 € (geschütztes Leerzeichen, damit "€" nicht umbricht)
+  return Number(val).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 }
 
 function renderTempItems() {
@@ -1071,10 +1292,12 @@ function setupDetailModal() {
       return;
     }
 
+    const newName = document.getElementById('detail-name-input').value.trim();
     const updates = {
-      items: [...currentEditingItems],
+      items: currentEditingItems.map(it => ({ ...it, quantity: Math.max(0, parseInt(it.quantity, 10) || 0) })),
       updatedAt: new Date().toISOString()
     };
+    if (newName) updates.name = newName;
 
     inventoriesRef.child(currentViewingId).update(updates)
       .then(() => {
@@ -1149,11 +1372,18 @@ function setupDetailModal() {
 }
 
 function updateEditView() {
+  const nameInput = document.getElementById('detail-name-input');
+  const invForName = inventories.find(i => i.firebaseKey === currentViewingId);
   if (isEditMode) {
     toggleEditBtn.textContent = 'Abbrechen';
     saveEditBtn.classList.remove('hidden');
     editControls.classList.remove('hidden');
+    nameInput.value = invForName && invForName.name ? invForName.name : '';
+    nameInput.classList.remove('hidden');
+    detailTitle.classList.add('hidden');
   } else {
+    nameInput.classList.add('hidden');
+    detailTitle.classList.remove('hidden');
     toggleEditBtn.textContent = 'Bearbeiten';
     saveEditBtn.classList.add('hidden');
     editControls.classList.add('hidden');
@@ -1178,26 +1408,61 @@ function renderDetailSummary() {
 function renderDetailItems() {
   renderDetailSummary();
   detailItemsTbody.innerHTML = '';
+  detailItemsTbody.closest('table').classList.toggle('editing', isEditMode);
   const editHeaders = document.querySelectorAll('.edit-col');
   editHeaders.forEach(el => el.classList.toggle('hidden', !isEditMode));
 
   currentEditingItems.forEach((it, idx) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${escapeHtml(it.name)}</td>
-      <td class="text-right">${it.quantity}</td>
-      <td class="text-right">${formatPrice(it.ek)}</td>
-      <td class="text-right">${formatPrice(it.vk)}</td>
-      ${isEditMode ? `<td class="text-center"><button class="del-btn" data-idx="${idx}">Entfernen</button></td>` : ''}
-    `;
-
     if (isEditMode) {
+      tr.innerHTML = `
+        <td>${escapeHtml(it.name)}</td>
+        <td class="text-right qty-cell">
+          <div class="qty-stepper">
+            <button type="button" class="qty-btn" data-step="-1" aria-label="Eins weniger">−</button>
+            <input type="number" class="qty-input" inputmode="numeric" min="0" step="1" value="${Number(it.quantity) || 0}" aria-label="Anzahl ${escapeHtml(it.name)}">
+            <button type="button" class="qty-btn" data-step="1" aria-label="Eins mehr">+</button>
+          </div>
+        </td>
+        <td class="text-right price-col">${formatPrice(it.ek)}</td>
+        <td class="text-right price-col">${formatPrice(it.vk)}</td>
+        <td class="text-center"><button class="del-btn icon-del" data-idx="${idx}" aria-label="${escapeHtml(it.name)} entfernen" title="Entfernen">✕</button></td>
+      `;
+      const qtyInput = tr.querySelector('.qty-input');
+      // Direkt eintippen: Wert übernehmen, Summen aktualisieren (ohne Neuzeichnen, damit der Fokus bleibt)
+      qtyInput.addEventListener('input', () => {
+        const v = parseInt(qtyInput.value, 10);
+        currentEditingItems[idx].quantity = isNaN(v) || v < 0 ? 0 : v;
+        renderDetailSummary();
+      });
+      qtyInput.addEventListener('blur', () => {
+        qtyInput.value = currentEditingItems[idx].quantity;
+      });
+      tr.querySelectorAll('.qty-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const next = Math.max(0, (Number(currentEditingItems[idx].quantity) || 0) + Number(btn.dataset.step));
+          currentEditingItems[idx].quantity = next;
+          qtyInput.value = next;
+          renderDetailSummary();
+        });
+      });
       tr.querySelector('.del-btn').addEventListener('click', () => {
         currentEditingItems.splice(idx, 1);
         renderDetailItems();
       });
+    } else {
+      tr.innerHTML = `
+        <td>${escapeHtml(it.name)}</td>
+        <td class="text-right">${it.quantity}</td>
+        <td class="text-right">${formatPrice(it.ek)}</td>
+        <td class="text-right">${formatPrice(it.vk)}</td>
+      `;
     }
-
     detailItemsTbody.appendChild(tr);
   });
 }
+
+// Beim Verlassen/Wegwechseln offene Bestellungs-Eingaben sofort speichern
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) flushOrderSaves();
+});

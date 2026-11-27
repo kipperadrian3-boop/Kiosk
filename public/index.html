@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0b0f14">
   <title>Schul Kiosk</title>
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=9">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -67,6 +67,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
           <span>Inventar</span>
         </a>
+        <a href="#" id="menu-orders-link" class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 13h3M8 17h6"/></svg>
+          <span>Bestellungen</span>
+        </a>
       </nav>
       <div class="drawer-footer">
         <a href="#" id="menu-logout-link" class="nav-item">
@@ -92,6 +96,25 @@
             <div id="pie-tooltip" class="pie-tooltip" role="tooltip"></div>
           </div>
           <ul id="pie-legend" class="pie-legend"></ul>
+        </div>
+      </section>
+
+      <!-- Ansicht: Bestellungen -->
+      <section id="view-orders" class="view orders-view hidden">
+        <div class="content-header">
+          <div>
+            <h2>Bestellungen</h2>
+            <p class="home-subtitle" id="orders-subtitle">Woche auswählen</p>
+          </div>
+          <span class="counter-badge save-status" id="orders-save-status"></span>
+        </div>
+
+        <div class="week-timeline" id="week-timeline" role="tablist" aria-label="Wochen"></div>
+
+        <div class="orders-card">
+          <div class="orders-table-wrap" id="orders-table-wrap">
+            <table class="orders-table" id="orders-table"></table>
+          </div>
         </div>
       </section>
 
@@ -223,6 +246,7 @@
       <div class="modal-header">
         <div>
           <h3 id="detail-title">Inventur-Details</h3>
+          <input type="text" id="detail-name-input" class="title-input hidden" placeholder="Name der Inventur" aria-label="Name der Inventur" maxlength="80">
           <div class="dates-meta">
             <span id="detail-created"></span>
             <span id="detail-updated"></span>
@@ -268,9 +292,9 @@
               <tr>
                 <th>Produkt</th>
                 <th class="text-right">Menge</th>
-                <th class="text-right">EK</th>
-                <th class="text-right">VK</th>
-                <th class="text-center edit-col hidden">Aktion</th>
+                <th class="text-right price-col">EK</th>
+                <th class="text-right price-col">VK</th>
+                <th class="text-center edit-col hidden"><span class="sr-only">Aktion</span></th>
               </tr>
             </thead>
             <tbody id="detail-items-tbody">
@@ -313,6 +337,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <script src="app.js?v=7"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

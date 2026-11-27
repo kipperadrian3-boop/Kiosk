@@ -1341,6 +1341,354 @@ input:-webkit-autofill:focus {
   border-top: 1px solid var(--border-color);
 }
 
+/* ---------- Inventur bearbeiten: Name + Anzahl ---------- */
+.title-input {
+  width: 100%;
+  min-width: 0;
+  font-size: 1.05rem !important;
+  font-weight: 600;
+}
+
+.qty-cell {
+  white-space: nowrap;
+}
+
+.qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-color);
+  overflow: hidden;
+}
+
+.qty-btn {
+  width: 32px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.12s ease;
+  touch-action: manipulation;
+}
+
+.qty-btn:hover {
+  background: var(--card-hover);
+}
+
+.qty-btn:active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.items-table input.qty-input {
+  width: 46px;
+  height: 34px;
+  padding: 0 2px;
+  border: none;
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  border-radius: 0;
+  background: transparent;
+  text-align: center;
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.items-table input.qty-input::-webkit-outer-spin-button,
+.items-table input.qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.items-table input.qty-input:focus {
+  box-shadow: inset 0 0 0 2px var(--blue);
+}
+
+.icon-del {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+/* ---------- Bestellungen ---------- */
+.orders-view {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 1.5rem;
+}
+
+.save-status:empty {
+  display: none;
+}
+
+.save-status.error {
+  color: var(--danger-color);
+  border-color: rgba(248, 81, 73, 0.4);
+}
+
+.week-timeline {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 2px 2px 10px;
+  margin: 0 -2px 0.75rem;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.week-timeline::-webkit-scrollbar {
+  height: 6px;
+}
+
+.week-timeline::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.week-chip {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 104px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 0.55rem 0.8rem 0.6rem;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-main);
+  cursor: pointer;
+  scroll-snap-align: end;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.week-chip:hover {
+  border-color: var(--border-strong);
+  background: var(--card-hover);
+}
+
+.week-chip.active {
+  border-color: var(--accent-color);
+  background: var(--accent-soft);
+}
+
+.week-kw {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.week-chip.active .week-kw {
+  color: var(--accent-text);
+}
+
+.week-date {
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.week-dot {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--blue);
+  display: none;
+}
+
+.week-chip.has-data .week-dot {
+  display: block;
+}
+
+.orders-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.orders-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.orders-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.88rem;
+}
+
+.orders-table th,
+.orders-table td {
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  padding: 0;
+  text-align: left;
+}
+
+.orders-table tr > :last-child {
+  border-right: none;
+}
+
+.orders-table tbody tr:last-child > * {
+  border-bottom: none;
+}
+
+.orders-table thead th {
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 0.75rem 0.7rem;
+  white-space: nowrap;
+}
+
+.orders-table .roll-col {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface);
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 0.88rem;
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 0 0.85rem;
+  width: 150px;
+  min-width: 130px;
+  white-space: nowrap;
+  box-shadow: 1px 0 0 var(--border-color);
+}
+
+.orders-table thead .roll-col {
+  z-index: 3;
+}
+
+.orders-table .col-wide {
+  min-width: 150px;
+}
+
+.orders-table .col-sep {
+  border-left: 2px solid var(--border-strong);
+}
+
+.orders-table input.order-input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-main);
+  padding: 0 0.7rem;
+  font-size: 0.92rem;
+}
+
+.orders-table input.order-input:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.orders-table input.order-input:focus {
+  background: var(--bg-color);
+  box-shadow: inset 0 0 0 2px var(--blue);
+}
+
+.col-short {
+  display: none;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 580px) {
+  .week-chip {
+    min-width: 96px;
+    padding: 0.5rem 0.7rem;
+  }
+
+  .orders-table {
+    min-width: 600px;
+  }
+
+  .orders-table .roll-col {
+    width: 112px;
+    min-width: 112px;
+    padding: 0 0.6rem;
+    font-size: 0.82rem;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .orders-table .col-full {
+    display: none;
+  }
+
+  .orders-table .col-short {
+    display: inline;
+  }
+
+  .orders-table .col-wide {
+    min-width: 120px;
+  }
+
+  .orders-table input.order-input {
+    font-size: 16px;
+    padding: 0 0.5rem;
+  }
+
+  .qty-btn {
+    width: 30px;
+  }
+
+  .items-table input.qty-input {
+    width: 38px;
+    font-size: 16px;
+  }
+
+  /* Bearbeiten auf dem Handy: EK/VK ausblenden, damit Name und Anzahl Platz haben */
+  .items-table.editing .price-col {
+    display: none;
+  }
+
+  .items-table td,
+  .items-table th {
+    word-break: normal !important;
+    overflow-wrap: anywhere;
+  }
+
+  .items-table td.text-right {
+    white-space: nowrap;
+  }
+}
+
 /* ---------- Toast-Meldungen ---------- */
 .toast-container {
   position: fixed;
