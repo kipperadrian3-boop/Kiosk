@@ -1361,7 +1361,7 @@ function setupInfiniteScroll() {
       renderInventoryList();
     }
   }, {
-    root: inventoryFrame || null,
+    root: null, // Bildschirm als Bezug – funktioniert, egal ob die Liste oder die ganze Seite scrollt
     threshold: 0.1
   });
 
