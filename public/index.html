@@ -2,12 +2,12 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
   <!-- Seite ist dunkel: verhindert, dass Android-Browser (Chrome/Samsung) sie automatisch umfärben -->
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0b0f14">
   <title>Schul Kiosk</title>
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=12">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -347,15 +347,16 @@
   <div id="delete-week-modal" class="modal">
     <div class="modal-content confirm-modal-content">
       <div class="modal-header">
-        <h3 class="danger-title">Woche löschen?</h3>
+        <h3 class="danger-title">Wirklich Löschen ?</h3>
         <button type="button" id="close-delete-week-modal" class="close-btn" aria-label="Schließen">&times;</button>
       </div>
       <div class="modal-body">
-        <p class="confirm-text" id="delete-week-text"></p>
+        <p class="confirm-text"><span id="delete-week-text"></span> Bitte gib <strong>Löschen</strong> ein, um das Löschen zu bestätigen:</p>
+        <input type="text" id="delete-week-input" placeholder="Löschen" autocomplete="off" aria-label="Löschen zur Bestätigung eingeben">
       </div>
       <div class="modal-footer flex-row">
         <button type="button" id="delete-week-cancel" class="btn secondary-btn">Abbrechen</button>
-        <button type="button" id="delete-week-confirm" class="btn danger-btn">Löschen</button>
+        <button type="button" id="delete-week-confirm" class="btn danger-btn glow-btn" disabled>Löschen</button>
       </div>
     </div>
   </div>
@@ -384,6 +385,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

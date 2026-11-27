@@ -82,7 +82,45 @@ let currentEditingItems = [];
 function openModal(modalEl) {
   modalEl.classList.add('open');
   document.body.classList.add('modal-open');
+  ensureBackEntry();
 }
+
+// Zurück-Taste (Android / Browser): ein Verlaufs-Eintrag, solange ein Fenster oder das Menü offen ist
+let backEntryActive = false;
+function ensureBackEntry() {
+  if (backEntryActive) return;
+  try {
+    history.pushState({ kioskOverlay: true }, '');
+    backEntryActive = true;
+  } catch (e) { /* ignorieren */ }
+}
+
+// Wurde per ✕/Abbrechen geschlossen: den übrigen Verlaufs-Eintrag wieder entfernen
+let ignoreNextPop = false;
+function releaseBackEntry() {
+  setTimeout(() => {
+    if (!backEntryActive) return;
+    if (document.querySelector('.modal.open') || sidebarDrawer.classList.contains('open')) return;
+    backEntryActive = false;
+    ignoreNextPop = true;
+    history.back();
+  }, 0);
+}
+
+window.addEventListener('popstate', () => {
+  if (ignoreNextPop) { ignoreNextPop = false; return; }
+  backEntryActive = false;
+  const lock = document.getElementById('lock-screen');
+  if (lock && !lock.classList.contains('hidden')) return;
+  const openModals = document.querySelectorAll('.modal.open');
+  if (openModals.length) {
+    closeModal(openModals[openModals.length - 1]);
+  } else if (sidebarDrawer.classList.contains('open')) {
+    sidebarDrawer.classList.remove('open');
+    drawerOverlay.classList.remove('open');
+  }
+  if (document.querySelector('.modal.open') || sidebarDrawer.classList.contains('open')) ensureBackEntry();
+});
 
 function closeModal(modalEl) {
   modalEl.classList.remove('open');
@@ -90,6 +128,7 @@ function closeModal(modalEl) {
   const anyOpen = document.querySelector('.modal.open');
   if (!anyOpen) {
     document.body.classList.remove('modal-open');
+    releaseBackEntry();
   }
 }
 
@@ -198,10 +237,12 @@ function setupDrawer() {
   function openDrawer() {
     sidebarDrawer.classList.add('open');
     drawerOverlay.classList.add('open');
+    ensureBackEntry();
   }
   function closeDrawer() {
     sidebarDrawer.classList.remove('open');
     drawerOverlay.classList.remove('open');
+    releaseBackEntry();
   }
   menuBtn.addEventListener('click', openDrawer);
   closeDrawerBtn.addEventListener('click', closeDrawer);
@@ -551,14 +592,19 @@ async function openDeleteWeekModal() {
   if (!selectedOrderWeek) return;
   if (!(await requireAuth())) return;
   document.getElementById('delete-week-text').textContent =
-    `Die Woche vom ${formatDay(weekKeyToDate(selectedOrderWeek))} verschwindet von der Website. In der Datenbank bleibt sie unter „deleted_orders“ gespeichert.`;
+    `Die Woche vom ${formatDay(weekKeyToDate(selectedOrderWeek))} verschwindet von der Website.`;
+  const input = document.getElementById('delete-week-input');
+  input.value = '';
+  document.getElementById('delete-week-confirm').disabled = true;
   openModal(document.getElementById('delete-week-modal'));
+  setTimeout(() => input.focus(), 150);
 }
 
 async function confirmDeleteWeek() {
   const key = selectedOrderWeek;
   const btn = document.getElementById('delete-week-confirm');
-  if (!key) return;
+  if (!key || btn.disabled) return;
+  if (document.getElementById('delete-week-input').value.trim().toLowerCase() !== 'löschen') return;
   btn.disabled = true;
   btn.textContent = 'Wird gelöscht...';
   try {
@@ -578,12 +624,19 @@ async function confirmDeleteWeek() {
     console.error(err);
     showToast('Woche konnte nicht gelöscht werden', 'error');
   } finally {
-    btn.disabled = false;
+    btn.disabled = document.getElementById('delete-week-input').value.trim().toLowerCase() !== 'löschen';
     btn.textContent = 'Löschen';
   }
 }
 
 function setupOrdersUi() {
+  const delInput = document.getElementById('delete-week-input');
+  delInput.addEventListener('input', () => {
+    document.getElementById('delete-week-confirm').disabled = delInput.value.trim().toLowerCase() !== 'löschen';
+  });
+  delInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') confirmDeleteWeek();
+  });
   document.getElementById('add-week-input').addEventListener('input', updateAddWeekPreview);
   document.getElementById('add-week-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -922,8 +975,9 @@ function renderInventoryList() {
       <div class="card-main">
         <div class="card-title">${escapeHtml(titleText)}</div>
         <div class="card-meta">
-          <span>Erstellt: ${formatDate(inv.createdAt)}</span>
-          ${inv.updatedAt !== inv.createdAt ? `<span class="dot">·</span><span>Bearbeitet: ${formatDate(inv.updatedAt)}</span>` : ''}
+          <span class="meta-long">Erstellt: ${formatDate(inv.createdAt)}</span>
+          <span class="meta-short">${formatShortDate(inv.createdAt)}</span>
+          ${inv.updatedAt !== inv.createdAt ? `<span class="dot meta-updated">·</span><span class="meta-updated">Bearbeitet: ${formatDate(inv.updatedAt)}</span>` : ''}
           <span class="dot">·</span><span>${totals.products} ${totals.products === 1 ? 'Produkt' : 'Produkte'}</span>
         </div>
       </div>

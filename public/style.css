@@ -677,6 +677,7 @@ body.modal-open {
   width: 100%;
   max-width: 550px;
   max-height: 88vh;
+  max-height: 90dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -974,8 +975,10 @@ input:focus {
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
   overflow-y: auto;
-  max-height: 300px;
   overscroll-behavior: contain;
+  /* wächst mit dem Fenster, scrollt nur wenn es wirklich nicht passt */
+  flex: 1 1 auto;
+  min-height: 150px;
 }
 
 .items-table {
@@ -1212,7 +1215,7 @@ input:focus {
   }
 
   .pie-chart {
-    max-width: 260px;
+    max-width: 220px;
   }
 
   .pie-legend {
@@ -1759,6 +1762,111 @@ input:-webkit-autofill:focus {
   display: none !important;
 }
 
+/* ---------- Geräte-Feinschliff ---------- */
+.meta-short {
+  display: none;
+}
+
+/* iPad hochkant & größer: Bestell-Tabelle passt ohne seitliches Wischen */
+@media (min-width: 700px) {
+  .orders-table {
+    min-width: 0;
+    table-layout: fixed;
+  }
+
+  .orders-table .roll-col {
+    width: 140px;
+    min-width: 0;
+  }
+
+  .orders-table th.col-wide,
+  .orders-table td.col-wide {
+    width: 170px;
+    min-width: 0;
+  }
+
+  .orders-table thead th {
+    padding: 0.75rem 0.55rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (min-width: 700px) and (max-width: 900px) {
+  .orders-table th.col-wide,
+  .orders-table td.col-wide {
+    width: 140px;
+  }
+
+  .orders-table .roll-col {
+    width: 128px;
+  }
+
+  .orders-table thead th {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 0.8rem;
+    padding: 0.75rem 0.4rem;
+  }
+}
+
+/* Querformat (iPad quer / Desktop): Eingabeformular in einer Zeile -> mehr Platz für die Liste */
+@media (min-width: 900px) {
+  .inventory-modal-content {
+    max-width: 760px;
+  }
+
+  .item-input-form {
+    flex-direction: row;
+    align-items: flex-end;
+    padding: 0.75rem;
+  }
+
+  .item-input-form .form-row-compact {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .item-input-form .form-row-compact:first-child {
+    flex: 1 1 0;
+  }
+
+  .item-input-form .form-row-compact:last-child {
+    flex: 1.3 1 0;
+  }
+}
+
+/* Handy: kompakte Inventur-Karten, damit der Name Platz hat */
+@media (max-width: 580px) {
+  .inventory-card .card-icon {
+    display: none;
+  }
+
+  .inventory-card {
+    padding: 0.8rem 0.35rem 0.8rem 0.9rem;
+    gap: 0.5rem;
+  }
+
+  .inventory-card .card-meta {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .meta-long,
+  .meta-updated {
+    display: none;
+  }
+
+  .meta-short {
+    display: inline;
+  }
+
+  .legend-item {
+    padding: 0.32rem 0.4rem;
+  }
+}
+
 /* ---------- Toast-Meldungen ---------- */
 .toast-container {
   position: fixed;
@@ -1889,6 +1997,7 @@ input:-webkit-autofill:focus {
   .inventory-modal-content {
     max-width: 100%;
     max-height: 94vh;
+    max-height: 94dvh;
     border-radius: 18px 18px 0 0;
     border-bottom: none;
     transform: translateY(100%);
@@ -1948,7 +2057,6 @@ input:-webkit-autofill:focus {
   }
 
   .table-container {
-    max-height: 260px;
     overflow-x: hidden;
   }
 
@@ -1979,9 +2087,6 @@ input:-webkit-autofill:focus {
     padding: 1.5rem;
   }
 
-  .table-container {
-    max-height: 360px;
-  }
 
   .btn {
     min-height: 44px;
