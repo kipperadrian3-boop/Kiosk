@@ -405,11 +405,11 @@ function renderOrderTable() {
     table.dataset.week = selectedOrderWeek;
     let html = '<thead><tr><th class="roll-col" scope="col"><span class="sr-only">Brötchen</span></th>';
     ORDER_COLUMNS.forEach((c) => {
-      html += `<th scope="col" class="${c.wide ? 'col-wide' : ''}${c.key === 'name' ? ' col-sep' : ''}"><span class="col-full">${c.label}</span><span class="col-short">${c.short}</span></th>`;
+      html += `<th scope="col" class="${c.wide ? 'col-wide' : ''}${c.key === 'name' ? ' col-sep' : ''}"><span class="col-full fit-text">${c.label}</span><span class="col-short fit-text">${c.short}</span></th>`;
     });
     html += '</tr></thead><tbody>';
     ORDER_ROLLS.forEach((r) => {
-      html += `<tr><th scope="row" class="roll-col">${r.label}</th>`;
+      html += `<tr><th scope="row" class="roll-col"><span class="fit-text">${r.label}</span></th>`;
       ORDER_COLUMNS.forEach((c) => {
         html += `<td class="${c.wide ? 'col-wide' : ''}${c.key === 'name' ? ' col-sep' : ''}"><input type="text" class="order-input" data-roll="${r.key}" data-col="${c.key}" aria-label="${r.label} – ${c.label}" autocomplete="off" maxlength="60"></td>`;
       });
@@ -460,6 +460,7 @@ function renderOrders(scrollToSelected) {
   card.classList.remove('hidden');
   empty.classList.add('hidden');
   renderOrderTable();
+  fitOrderLabels();
 
   const monday = weekKeyToDate(selectedOrderWeek);
   const thursday = new Date(monday);
@@ -477,6 +478,44 @@ function renderOrders(scrollToSelected) {
       ordersTimelineScrolled = true;
     }
   }
+}
+
+// Beschriftungen, die nicht in ihre Spalte passen, automatisch kleiner machen
+function fitOrderLabels() {
+  document.querySelectorAll('#orders-table .fit-text').forEach((el) => {
+    el.style.fontSize = '';
+    el.style.whiteSpace = '';
+    const avail = el.clientWidth;
+    if (!avail) return; // gerade unsichtbar
+    if (el.scrollWidth <= avail) return;
+    // erst grob verkleinern, dann in kleinen Schritten bis es wirklich passt
+    let size = parseFloat(getComputedStyle(el).fontSize);
+    size = Math.max(10, Math.floor(size * avail / el.scrollWidth * 10) / 10);
+    el.style.fontSize = size + 'px';
+    let guard = 0;
+    while (el.scrollWidth > el.clientWidth && size > 10 && guard++ < 30) {
+      size = Math.max(10, size - 0.5);
+      el.style.fontSize = size + 'px';
+    }
+    // passt selbst ganz klein nicht -> umbrechen statt überlappen
+    if (el.scrollWidth > el.clientWidth) el.style.whiteSpace = 'normal';
+  });
+}
+
+// Neu anpassen, sobald sich Fenster- oder Tabellenbreite ändert (Drehen, Größe ändern, Schrift geladen)
+let fitFrame = null;
+function scheduleFitOrderLabels() {
+  if (fitFrame) cancelAnimationFrame(fitFrame);
+  fitFrame = requestAnimationFrame(() => { fitFrame = null; fitOrderLabels(); });
+}
+window.addEventListener('resize', scheduleFitOrderLabels);
+window.addEventListener('orientationchange', scheduleFitOrderLabels);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(scheduleFitOrderLabels);
+if (window.ResizeObserver) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const wrap = document.getElementById('orders-table-wrap');
+    if (wrap) new ResizeObserver(scheduleFitOrderLabels).observe(wrap);
+  });
 }
 
 // ---------- Datum flexibel einlesen ----------

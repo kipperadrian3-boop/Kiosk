@@ -1867,6 +1867,42 @@ input:-webkit-autofill:focus {
   }
 }
 
+@media (min-width: 1000px) {
+  .orders-table .roll-col {
+    width: 170px;
+  }
+}
+
+/* Beschriftungen in der Bestelltabelle: werden per JS verkleinert, wenn sie nicht passen */
+.orders-table th {
+  overflow: hidden;
+}
+
+.orders-table .fit-text {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  line-height: 1.2;
+}
+
+.orders-table .col-short.fit-text {
+  display: none;
+}
+
+@media (max-width: 580px) {
+  .orders-table .col-full.fit-text {
+    display: none;
+  }
+
+  .orders-table .col-short.fit-text {
+    display: block;
+  }
+
+  .orders-table .roll-col {
+    white-space: nowrap;
+  }
+}
+
 /* ---------- Toast-Meldungen ---------- */
 .toast-container {
   position: fixed;
